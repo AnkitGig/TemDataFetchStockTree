@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Live Market Data</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+    }
+    #marketData {
+      background: #fff;
+      padding: 10px;
+      border: 1px solid #ccc;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h2>📈 Live Market Data</h2>
+  <pre id="marketData">Waiting for data...</pre>
+
+  <script>
+  //  const socket = new WebSocket("ws://localhost:3001/ws");
+   const socket = new WebSocket("wss://api.stockstree.in/ws");
+   
+ // ← Replace YOUR_SERVER_IP..
+
+    socket.onopen = () => {
+      console.log("✅ WebSocket connected");
+
+      // Optional: Send PING
+      socket.send(JSON.stringify({ type: "PING" }));
+
+      // Optional: Subscribe to symbols
+      socket.send(JSON.stringify({
+        type: "SUBSCRIBE",
+        symbols: ["NIFTY", "BANKNIFTY"]
+      }));
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log("📩 Message received:", data);
+
+      if (data.type === "INITIAL_DATA" || data.type === "MARKET_UPDATE") {
+        document.getElementById("marketData").textContent =
+          JSON.stringify(data.data, null, 2);
+      }
+    };
+
+    socket.onerror = (err) => {
+      console.error("❌ WebSocket error:", err);
+    };
+
+    socket.onclose = () => {
+      console.warn("🔌 WebSocket disconnected");
+    };
+  </script>
+</body>
+</html>

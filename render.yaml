@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: angel-broking-app
+    env: node
+    plan: free
+    buildCommand: npm run install-all && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_CODE
+        sync: false
+      - key: MPIN
+        sync: false
+      - key: SMARTAPI_KEY
+        sync: false
+      - key: TOTP_SECRET
+        sync: false
+      - key: CLIENT_IP
+        sync: false
+      - key: PUBLIC_IP
+        sync: false
+      - key: MONGODB_URI
+        sync: false
