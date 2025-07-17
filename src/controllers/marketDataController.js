@@ -215,8 +215,21 @@ const getOptionChain = async (req, res) => {
     const { underlying } = req.params
     const { expiry } = req.query
 
+    console.log(`📊 Getting option chain for ${underlying} with price ranges`)
+
     // First check cache
     const optionChain = await optionChainService.getOptionChainByUnderlying(underlying, expiry)
+
+    // Get comprehensive underlying price data
+    let underlyingPriceData = null
+    if (authService.isAuthenticated()) {
+      const authToken = authService.getAuthToken()
+      try {
+        underlyingPriceData = await marketDataService.getUnderlyingPriceRanges(authToken, underlying)
+      } catch (priceError) {
+        console.error(`❌ Error fetching price ranges for ${underlying}:`, priceError.message)
+      }
+    }
 
     if (optionChain.length === 0) {
       // No cached data, need to fetch fresh
@@ -241,6 +254,7 @@ const getOptionChain = async (req, res) => {
           underlying: underlying.toUpperCase(),
           expiry: expiry || "all",
           count: freshData.length,
+          underlyingPriceData: underlyingPriceData,
           source: "live_api",
           fetchTime: result.fetchTime,
         })
@@ -253,6 +267,7 @@ const getOptionChain = async (req, res) => {
       underlying: underlying.toUpperCase(),
       expiry: expiry || "all",
       count: optionChain.length,
+      underlyingPriceData: underlyingPriceData,
       source: optionChain.length > 0 ? "cache" : "no_data",
     })
   } catch (error) {
@@ -401,7 +416,7 @@ const getOptionByStrike = async (req, res) => {
         openInterest: putOption.openInterest || 0,
         changeInOI: putOption.changeInOI || 0,
         volume: putOption.volume || 0,
-        change: putOption.change || 0,
+        change: callOption.change || 0,
         changePercent: putOption.changePercent || 0,
         high: putOption.high || 0,
         low: putOption.low || 0,
@@ -441,26 +456,190 @@ const getAvailableUnderlyings = async (req, res) => {
   }
 }
 
-// Enhanced stock details function with comprehensive option chain
+// Enhanced stock details function with comprehensive price data for all stocks
 const getStockDetails = async (req, res) => {
   try {
     const { symbol } = req.params
     const authToken = authService.getAuthToken()
 
     console.log(`📊 Getting comprehensive details for ${symbol}`)
+    console.log(`🔐 Auth token available: ${!!authToken}`)
+    console.log(`🔐 Is authenticated: ${authService.isAuthenticated()}`)
 
-    // Try to get from stock master service if available
+    // Check authentication status first
+    const authStatus = authService.isAuthenticated()
+    if (!authStatus) {
+      console.log("❌ User not authenticated, trying to login...")
+
+      // Try to auto-login if not authenticated
+      try {
+        await authService.login()
+        console.log("✅ Auto-login successful")
+      } catch (loginError) {
+        console.error("❌ Auto-login failed:", loginError.message)
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required for live stock data. Please login first.",
+          loginEndpoint: "/api/auth/login",
+          symbol: symbol.toUpperCase(),
+          authError: loginError.message,
+        })
+      }
+    }
+
+    // Get fresh auth token after potential login
+    const freshAuthToken = authService.getAuthToken()
+    console.log(`🔐 Fresh auth token available: ${!!freshAuthToken}`)
+
+    if (!freshAuthToken) {
+      return res.status(401).json({
+        success: false,
+        message: "No authentication token available",
+        loginEndpoint: "/api/auth/login",
+        symbol: symbol.toUpperCase(),
+      })
+    }
+
+    // Use enhanced stock master service for all stocks
+    const stockMasterService = require("../services/stockMasterService")
+
     try {
-      const stockMasterService = require("../services/stockMasterService")
-      const stockDetails = await stockMasterService.getStockDetails(symbol, authToken)
+      console.log(`📊 Fetching stock details from stock master service for ${symbol}`)
+      const stockDetails = await stockMasterService.getStockDetails(symbol, freshAuthToken)
+
+      // Debug: Log what we got from stock master service
+      console.log(`📊 Stock details result for ${symbol}:`, {
+        hasBasic: !!stockDetails.basic,
+        hasPriceRanges: !!stockDetails.priceRanges,
+        hasDerivatives: !!stockDetails.derivatives,
+        priceRangesKeys: stockDetails.priceRanges ? Object.keys(stockDetails.priceRanges) : null,
+      })
+
+      // If we still don't have price ranges, try direct market data fetch
+      if (!stockDetails.priceRanges && stockDetails.basic.token) {
+        console.log(`📊 No price ranges found, trying direct market data fetch for ${symbol}`)
+
+        try {
+          // Try to get from general market data
+          const result = await marketDataService.fetchMarketData(freshAuthToken, "FULL")
+          console.log(`📊 Market data fetch result: ${result.data?.length || 0} records`)
+
+          const stockData = result.data?.find(
+            (item) => item.symbol?.toUpperCase() === symbol.toUpperCase() || item.token === stockDetails.basic.token,
+          )
+
+          if (stockData) {
+            console.log(`✅ Found stock data in market feed for ${symbol}:`, {
+              ltp: stockData.ltp,
+              change: stockData.change,
+              high: stockData.high,
+              low: stockData.low,
+            })
+
+            stockDetails.priceRanges = {
+              current: {
+                ltp: Number.parseFloat((stockData.ltp || 0).toFixed(2)),
+                change: Number.parseFloat((stockData.change || 0).toFixed(2)),
+                changePercent: Number.parseFloat((stockData.changePercent || 0).toFixed(2)),
+                volume: stockData.volume || 0,
+                avgPrice: Number.parseFloat((stockData.avgPrice || 0).toFixed(2)),
+                timestamp: new Date().toISOString(),
+              },
+              today: {
+                open: Number.parseFloat((stockData.open || 0).toFixed(2)),
+                high: Number.parseFloat((stockData.high || 0).toFixed(2)),
+                low: Number.parseFloat((stockData.low || 0).toFixed(2)),
+                close: Number.parseFloat((stockData.close || 0).toFixed(2)),
+                volume: stockData.volume || 0,
+              },
+              yearly: {
+                high52Week: Number.parseFloat((stockData.weekHigh52 || 0).toFixed(2)),
+                low52Week: Number.parseFloat((stockData.weekLow52 || 0).toFixed(2)),
+                changeFrom52WeekHigh:
+                  stockData.weekHigh52 > 0 && stockData.ltp > 0
+                    ? Number.parseFloat(
+                        (((stockData.ltp - stockData.weekHigh52) / stockData.weekHigh52) * 100).toFixed(2),
+                      )
+                    : 0,
+                changeFrom52WeekLow:
+                  stockData.weekLow52 > 0 && stockData.ltp > 0
+                    ? Number.parseFloat(
+                        (((stockData.ltp - stockData.weekLow52) / stockData.weekLow52) * 100).toFixed(2),
+                      )
+                    : 0,
+              },
+              circuits: {
+                upperCircuit: Number.parseFloat((stockData.upperCircuit || 0).toFixed(2)),
+                lowerCircuit: Number.parseFloat((stockData.lowerCircuit || 0).toFixed(2)),
+                distanceFromUpperCircuit:
+                  stockData.upperCircuit && stockData.ltp > 0
+                    ? Number.parseFloat((((stockData.upperCircuit - stockData.ltp) / stockData.ltp) * 100).toFixed(2))
+                    : 0,
+                distanceFromLowerCircuit:
+                  stockData.lowerCircuit && stockData.ltp > 0
+                    ? Number.parseFloat((((stockData.ltp - stockData.lowerCircuit) / stockData.ltp) * 100).toFixed(2))
+                    : 0,
+              },
+              metadata: {
+                symbol: stockDetails.basic.symbol,
+                token: stockDetails.basic.token,
+                exchange: stockDetails.basic.exchange,
+                instrumentType: stockDetails.basic.instrumentType,
+                lastUpdated: new Date().toISOString(),
+                dataSource: "angel_broking_market_data_direct",
+              },
+            }
+
+            // Calculate estimated weekly and monthly ranges
+            const currentPrice = stockData.ltp || 0
+            const high52Week = stockData.weekHigh52 || 0
+            const low52Week = stockData.weekLow52 || 0
+
+            if (currentPrice > 0) {
+              const estimatedMonthlyHigh = Math.min(high52Week, currentPrice * 1.12)
+              const estimatedMonthlyLow = Math.max(low52Week, currentPrice * 0.88)
+              const estimatedWeeklyHigh = Math.min(estimatedMonthlyHigh, currentPrice * 1.05)
+              const estimatedWeeklyLow = Math.max(estimatedMonthlyLow, currentPrice * 0.95)
+
+              stockDetails.priceRanges.weekly = {
+                high: Number.parseFloat(estimatedWeeklyHigh.toFixed(2)),
+                low: Number.parseFloat(estimatedWeeklyLow.toFixed(2)),
+                changeFromWeekHigh: Number.parseFloat(
+                  (((currentPrice - estimatedWeeklyHigh) / estimatedWeeklyHigh) * 100).toFixed(2),
+                ),
+                changeFromWeekLow: Number.parseFloat(
+                  (((currentPrice - estimatedWeeklyLow) / estimatedWeeklyLow) * 100).toFixed(2),
+                ),
+              }
+
+              stockDetails.priceRanges.monthly = {
+                high: Number.parseFloat(estimatedMonthlyHigh.toFixed(2)),
+                low: Number.parseFloat(estimatedMonthlyLow.toFixed(2)),
+                changeFromMonthHigh: Number.parseFloat(
+                  (((currentPrice - estimatedMonthlyHigh) / estimatedMonthlyHigh) * 100).toFixed(2),
+                ),
+                changeFromMonthLow: Number.parseFloat(
+                  (((currentPrice - estimatedMonthlyLow) / estimatedMonthlyLow) * 100).toFixed(2),
+                ),
+              }
+            }
+
+            console.log(`✅ Successfully added price data via direct market fetch for ${symbol}`)
+          } else {
+            console.log(`⚠️ Stock ${symbol} not found in market data feed`)
+          }
+        } catch (marketError) {
+          console.error(`❌ Direct market data fetch failed for ${symbol}:`, marketError.message)
+        }
+      }
 
       // If stock has options, fetch comprehensive option chain data
-      if (stockDetails.derivatives.hasOptions && authToken) {
+      if (stockDetails.derivatives.hasOptions && freshAuthToken) {
         console.log(`📊 Fetching comprehensive option chain for ${symbol}`)
 
         try {
           // First, try to fetch fresh option chain data
-          const optionResult = await optionChainService.fetchOptionChainData(authToken, symbol)
+          const optionResult = await optionChainService.fetchOptionChainData(freshAuthToken, symbol)
 
           if (optionResult.success) {
             // Get all options from cache
@@ -571,109 +750,97 @@ const getStockDetails = async (req, res) => {
         }
       }
 
+      // Log the final result
+      console.log(`📊 Final stock details for ${symbol}:`, {
+        hasPriceRanges: !!stockDetails.priceRanges,
+        hasDerivatives: stockDetails.derivatives.hasFutures || stockDetails.derivatives.hasOptions,
+        hasOptionChain: !!(stockDetails.optionChain && stockDetails.optionChain.length > 0),
+        currentPrice: stockDetails.priceRanges?.current?.ltp || "N/A",
+        source: stockDetails.priceRanges ? "live_data_with_prices" : "basic_data_only",
+      })
+
       res.json({
         success: true,
         data: stockDetails,
         symbol: symbol.toUpperCase(),
-        hasLiveData: !!authToken,
+        hasLiveData: !!freshAuthToken,
         hasOptionChain: !!(stockDetails.optionChain && stockDetails.optionChain.length > 0),
         timestamp: new Date().toISOString(),
-        source: "comprehensive_stock_details_with_options",
+        source: stockDetails.priceRanges ? "comprehensive_stock_master_with_live_data" : "basic_stock_data_only",
+        debugInfo: {
+          authTokenAvailable: !!freshAuthToken,
+          stockMasterFound: !!stockDetails.basic,
+          priceDataFetched: !!stockDetails.priceRanges,
+          marketDataAttempted: true,
+        },
       })
     } catch (serviceError) {
       console.error("❌ Stock master service error:", serviceError.message)
 
-      // Fallback to basic stock info
+      // Fallback to basic stock info from static config
       const { searchStocks } = require("../config/stockConfig")
       const searchResults = searchStocks(symbol)
 
       if (searchResults.length > 0) {
         const stock = searchResults[0]
 
-        // Check if this is an option underlying and try to get option data
-        let optionChain = []
-        let optionChainSummary = null
-
-        if (stock.type === "OPTION_CHAIN" && authToken) {
+        // Try to get live price data even for fallback
+        let priceRanges = null
+        if (freshAuthToken && stock.token) {
           try {
-            console.log(`📊 Fetching option chain for underlying ${symbol}`)
-            const optionResult = await optionChainService.fetchOptionChainData(authToken, symbol)
+            console.log(`📊 Trying fallback price fetch for ${symbol}`)
+            const stockInfo = {
+              token: stock.token,
+              symbol: stock.symbol,
+              exch_seg: stock.exchange || "NSE",
+              instrumenttype: "EQ",
+            }
+            priceRanges = await marketDataService.getStockPriceRanges(freshAuthToken, stockInfo)
+            console.log(`✅ Fallback price fetch successful for ${symbol}`)
+          } catch (priceError) {
+            console.error(`❌ Error fetching price data for fallback ${symbol}:`, priceError.message)
 
-            if (optionResult.success) {
-              const allOptions = await optionChainService.getAllOptionsFromCache(symbol)
+            // Try the direct market data approach as final fallback
+            try {
+              console.log(`📊 Trying final fallback - direct market data for ${symbol}`)
+              const result = await marketDataService.fetchMarketData(freshAuthToken, "FULL")
+              const stockData = result.data?.find(
+                (item) => item.symbol?.toUpperCase() === symbol.toUpperCase() || item.token === stock.token,
+              )
 
-              if (allOptions && allOptions.length > 0) {
-                // Group options by strike and expiry (same logic as above)
-                const optionChainByStrike = {}
-
-                allOptions.forEach((option) => {
-                  const key = `${option.expiry}_${option.strike}`
-
-                  if (!optionChainByStrike[key]) {
-                    optionChainByStrike[key] = {
-                      strike: option.strike,
-                      expiry: option.expiry,
-                      underlying: option.underlying,
-                      CE: null,
-                      PE: null,
-                    }
-                  }
-
-                  const optionData = {
-                    token: option.token,
-                    symbol: option.symbol,
-                    underlying: option.underlying,
-                    strike: option.strike,
-                    optionType: option.optionType,
-                    expiry: option.expiry,
-                    ltp: option.ltp || 0,
-                    price: option.price || option.ltp || 0,
-                    change: option.change || 0,
-                    changePercent: option.changePercent || 0,
-                    open: option.open || 0,
-                    high: option.high || 0,
-                    low: option.low || 0,
-                    close: option.close || 0,
-                    volume: option.volume || 0,
-                    openInterest: option.openInterest || 0,
-                    changeInOI: option.changeInOI || 0,
-                    impliedVolatility: option.impliedVolatility || 0,
-                    delta: option.delta || 0,
-                    gamma: option.gamma || 0,
-                    theta: option.theta || 0,
-                    vega: option.vega || 0,
-                    lotSize: option.lotSize || 1,
-                    timestamp: option.timestamp || new Date().toISOString(),
-                  }
-
-                  if (option.optionType === "CE") {
-                    optionChainByStrike[key].CE = optionData
-                  } else if (option.optionType === "PE") {
-                    optionChainByStrike[key].PE = optionData
-                  }
-                })
-
-                optionChain = Object.values(optionChainByStrike).sort((a, b) => {
-                  if (a.expiry !== b.expiry) {
-                    return a.expiry.localeCompare(b.expiry)
-                  }
-                  return a.strike - b.strike
-                })
-
-                optionChainSummary = {
-                  totalStrikes: optionChain.length,
-                  totalCallOptions: optionChain.filter((item) => item.CE).length,
-                  totalPutOptions: optionChain.filter((item) => item.PE).length,
-                  availableExpiries: [...new Set(optionChain.map((item) => item.expiry))].sort(),
-                  strikeRange: {
-                    min: Math.min(...optionChain.map((item) => item.strike)),
-                    max: Math.max(...optionChain.map((item) => item.strike)),
+              if (stockData) {
+                priceRanges = {
+                  current: {
+                    ltp: Number.parseFloat((stockData.ltp || 0).toFixed(2)),
+                    change: Number.parseFloat((stockData.change || 0).toFixed(2)),
+                    changePercent: Number.parseFloat((stockData.changePercent || 0).toFixed(2)),
+                    volume: stockData.volume || 0,
+                    timestamp: new Date().toISOString(),
+                  },
+                  today: {
+                    open: Number.parseFloat((stockData.open || 0).toFixed(2)),
+                    high: Number.parseFloat((stockData.high || 0).toFixed(2)),
+                    low: Number.parseFloat((stockData.low || 0).toFixed(2)),
+                    close: Number.parseFloat((stockData.close || 0).toFixed(2)),
+                    volume: stockData.volume || 0,
+                  },
+                  yearly: {
+                    high52Week: Number.parseFloat((stockData.weekHigh52 || 0).toFixed(2)),
+                    low52Week: Number.parseFloat((stockData.weekLow52 || 0).toFixed(2)),
+                  },
+                  metadata: {
+                    symbol: stock.symbol,
+                    token: stock.token,
+                    exchange: stock.exchange,
+                    lastUpdated: new Date().toISOString(),
+                    dataSource: "final_fallback_market_data",
                   },
                 }
+                console.log(`✅ Final fallback successful for ${symbol}`)
               }
+            } catch (finalError) {
+              console.error(`❌ Final fallback also failed for ${symbol}:`, finalError.message)
             }
-          } catch (optionError) {
-            console.error(`❌ Error fetching option chain for ${symbol}:`, optionError.message)
           }
         }
 
@@ -681,7 +848,7 @@ const getStockDetails = async (req, res) => {
           success: true,
           data: {
             basic: stock,
-            priceRanges: null,
+            priceRanges: priceRanges,
             derivatives: {
               hasFutures: false,
               hasOptions: stock.type === "OPTION_CHAIN",
@@ -689,14 +856,20 @@ const getStockDetails = async (req, res) => {
               options: [],
               expiries: [],
             },
-            optionChain: optionChain,
-            optionChainSummary: optionChainSummary,
+            optionChain: [],
+            optionChainSummary: null,
           },
           symbol: symbol.toUpperCase(),
-          hasLiveData: !!authToken,
-          hasOptionChain: optionChain.length > 0,
+          hasLiveData: !!freshAuthToken,
+          hasOptionChain: false,
           timestamp: new Date().toISOString(),
-          source: "basic_stock_config_with_options",
+          source: priceRanges ? "fallback_static_config_with_live_data" : "fallback_static_config_only",
+          debugInfo: {
+            authTokenAvailable: !!freshAuthToken,
+            fallbackUsed: true,
+            priceDataFetched: !!priceRanges,
+            serviceError: serviceError.message,
+          },
         })
       } else {
         throw new Error(`Stock ${symbol} not found`)
@@ -708,6 +881,13 @@ const getStockDetails = async (req, res) => {
       success: false,
       message: error.message,
       symbol: req.params.symbol,
+      timestamp: new Date().toISOString(),
+      debugInfo: {
+        authTokenAvailable: !!authService.getAuthToken(),
+        isAuthenticated: authService.isAuthenticated(),
+        errorType: error.name,
+        errorMessage: error.message,
+      },
     })
   }
 }
@@ -718,7 +898,9 @@ const getComprehensiveOptionChain = async (req, res) => {
     const { underlying } = req.params
     const { expiry } = req.query
 
-    console.log(`📊 Getting comprehensive option chain for ${underlying}${expiry ? ` (expiry: ${expiry})` : ""}`)
+    console.log(
+      `📊 Getting comprehensive option chain for ${underlying}${expiry ? ` (expiry: ${expiry})` : ""} with price ranges`,
+    )
 
     if (!authService.isAuthenticated()) {
       return res.status(401).json({
@@ -729,6 +911,15 @@ const getComprehensiveOptionChain = async (req, res) => {
     }
 
     const authToken = authService.getAuthToken()
+
+    // Fetch comprehensive underlying price data
+    let underlyingPriceData = null
+    try {
+      underlyingPriceData = await marketDataService.getUnderlyingPriceRanges(authToken, underlying)
+      console.log(`📊 Fetched price ranges for ${underlying}:`, underlyingPriceData)
+    } catch (priceError) {
+      console.error(`❌ Error fetching price ranges for ${underlying}:`, priceError.message)
+    }
 
     // Fetch fresh option chain data
     const result = await optionChainService.fetchOptionChainData(authToken, underlying)
@@ -749,6 +940,7 @@ const getComprehensiveOptionChain = async (req, res) => {
         success: true,
         underlying: underlying.toUpperCase(),
         optionChain: [],
+        underlyingPriceData: underlyingPriceData,
         optionChainSummary: {
           totalStrikes: 0,
           totalCallOptions: 0,
@@ -842,9 +1034,10 @@ const getComprehensiveOptionChain = async (req, res) => {
       underlying: underlying.toUpperCase(),
       expiry: expiry || "all",
       optionChain: sortedOptionChain,
+      underlyingPriceData: underlyingPriceData,
       optionChainSummary: optionChainSummary,
       fetchTime: result.fetchTime,
-      source: "comprehensive_live_api",
+      source: "comprehensive_live_api_with_price_ranges",
     })
   } catch (error) {
     console.error("❌ Error getting comprehensive option chain:", error)

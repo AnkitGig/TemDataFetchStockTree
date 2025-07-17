@@ -1,5 +1,6 @@
 const axios = require("axios")
-const { getTokensByExchange, getStockByToken } = require("../config/stockConfig")
+const { getTokensByExchange, getStockByToken, getOptionUnderlying } = require("../config/stockConfig")
+const stockMasterService = require("./stockMasterService")
 
 class MarketDataService {
   constructor() {
@@ -140,6 +141,138 @@ class MarketDataService {
     } catch (error) {
       console.error("❌ Error processing stock data:", error)
       return null
+    }
+  }
+
+  async getUnderlyingPriceRanges(authToken, underlying) {
+    try {
+      if (!authToken) {
+        throw new Error("Authentication token required")
+      }
+
+      console.log(`📊 Fetching comprehensive price ranges for ${underlying}`)
+
+      // Get the underlying token from config
+      const underlyingConfig = getOptionUnderlying(underlying)
+
+      let stockInfo = null
+      if (!underlyingConfig) {
+        // Try to find in stock master service
+        stockInfo = stockMasterService.getStockBySymbol(underlying)
+
+        if (!stockInfo) {
+          throw new Error(`Underlying ${underlying} not found in configuration`)
+        }
+      }
+
+      const token = underlyingConfig ? underlyingConfig.token : stockInfo.token
+
+      // Fetch current market data for the underlying
+      const requestPayload = {
+        mode: "FULL",
+        exchangeTokens: {
+          [underlyingConfig?.exchange || "NSE"]: [token],
+        },
+      }
+
+      const response = await axios.post(this.baseUrl, requestPayload, {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${authToken}`,
+          "X-UserType": "USER",
+          "X-SourceID": "WEB",
+          "X-ClientLocalIP": process.env.CLIENT_IP || "192.168.1.1",
+          "X-ClientPublicIP": process.env.PUBLIC_IP || "103.21.58.192",
+          "X-MACAddress": "00:0a:95:9d:68:16",
+          "X-PrivateKey": process.env.SMARTAPI_KEY,
+        },
+      })
+
+      if (response.data && response.data.status && response.data.data.fetched.length > 0) {
+        const underlyingData = response.data.data.fetched[0]
+
+        // Calculate additional ranges (these would ideally come from historical data API)
+        const currentPrice = underlyingData.ltp || 0
+        const high52Week = underlyingData["52WeekHigh"] || 0
+        const low52Week = underlyingData["52WeekLow"] || 0
+
+        // For demo purposes, calculate estimated ranges based on current data
+        // In production, you'd fetch this from historical data APIs
+        const estimatedMonthlyHigh = Math.min(high52Week, currentPrice * 1.15)
+        const estimatedMonthlyLow = Math.max(low52Week, currentPrice * 0.85)
+        const estimatedWeeklyHigh = Math.min(estimatedMonthlyHigh, currentPrice * 1.08)
+        const estimatedWeeklyLow = Math.max(estimatedMonthlyLow, currentPrice * 0.92)
+
+        const priceRanges = {
+          current: {
+            ltp: Number.parseFloat((underlyingData.ltp || 0).toFixed(2)),
+            change: Number.parseFloat((underlyingData.netChange || 0).toFixed(2)),
+            changePercent: Number.parseFloat((underlyingData.percentChange || 0).toFixed(2)),
+            volume: underlyingData.tradeVolume || 0,
+            timestamp: new Date().toISOString(),
+          },
+          today: {
+            open: Number.parseFloat((underlyingData.open || 0).toFixed(2)),
+            high: Number.parseFloat((underlyingData.high || 0).toFixed(2)),
+            low: Number.parseFloat((underlyingData.low || 0).toFixed(2)),
+            close: Number.parseFloat((underlyingData.close || 0).toFixed(2)),
+            volume: underlyingData.tradeVolume || 0,
+          },
+          weekly: {
+            high: Number.parseFloat(estimatedWeeklyHigh.toFixed(2)),
+            low: Number.parseFloat(estimatedWeeklyLow.toFixed(2)),
+            changeFromWeekHigh: Number.parseFloat(
+              (((currentPrice - estimatedWeeklyHigh) / estimatedWeeklyHigh) * 100).toFixed(2),
+            ),
+            changeFromWeekLow: Number.parseFloat(
+              (((currentPrice - estimatedWeeklyLow) / estimatedWeeklyLow) * 100).toFixed(2),
+            ),
+          },
+          monthly: {
+            high: Number.parseFloat(estimatedMonthlyHigh.toFixed(2)),
+            low: Number.parseFloat(estimatedMonthlyLow.toFixed(2)),
+            changeFromMonthHigh: Number.parseFloat(
+              (((currentPrice - estimatedMonthlyHigh) / estimatedMonthlyHigh) * 100).toFixed(2),
+            ),
+            changeFromMonthLow: Number.parseFloat(
+              (((currentPrice - estimatedMonthlyLow) / estimatedMonthlyLow) * 100).toFixed(2),
+            ),
+          },
+          yearly: {
+            high52Week: Number.parseFloat(high52Week.toFixed(2)),
+            low52Week: Number.parseFloat(low52Week.toFixed(2)),
+            changeFrom52WeekHigh: Number.parseFloat((((currentPrice - high52Week) / high52Week) * 100).toFixed(2)),
+            changeFrom52WeekLow: Number.parseFloat((((currentPrice - low52Week) / low52Week) * 100).toFixed(2)),
+          },
+          circuits: {
+            upperCircuit: Number.parseFloat((underlyingData.upperCircuit || 0).toFixed(2)),
+            lowerCircuit: Number.parseFloat((underlyingData.lowerCircuit || 0).toFixed(2)),
+            distanceFromUpperCircuit: underlyingData.upperCircuit
+              ? Number.parseFloat((((underlyingData.upperCircuit - currentPrice) / currentPrice) * 100).toFixed(2))
+              : 0,
+            distanceFromLowerCircuit: underlyingData.lowerCircuit
+              ? Number.parseFloat((((currentPrice - underlyingData.lowerCircuit) / currentPrice) * 100).toFixed(2))
+              : 0,
+          },
+          metadata: {
+            symbol: underlying.toUpperCase(),
+            token: token,
+            exchange: underlyingConfig?.exchange || "NSE",
+            lotSize: underlyingConfig?.lotSize || 1,
+            lastUpdated: new Date().toISOString(),
+            dataSource: "angel_broking_api",
+          },
+        }
+
+        console.log(`✅ Fetched comprehensive price ranges for ${underlying}`)
+        return priceRanges
+      } else {
+        throw new Error(`No data available for underlying ${underlying}`)
+      }
+    } catch (error) {
+      console.error(`❌ Error fetching price ranges for ${underlying}:`, error.message)
+      throw error
     }
   }
 

@@ -689,6 +689,7 @@
             const derivatives = stockData.derivatives;
             const optionChain = stockData.optionChain;
             const optionSummary = stockData.optionChainSummary;
+            const underlyingPriceData = stockData.underlyingPriceData;
 
             let html = `
                 <div class="stock-card">
@@ -705,10 +706,120 @@
                                     (${prices.current.changePercent.toFixed(2)}%)
                                 </div>
                             </div>
+                        ` : underlyingPriceData ? `
+                            <div class="stock-price">
+                                <div class="ltp">₹${underlyingPriceData.current.ltp.toFixed(2)}</div>
+                                <div class="change ${underlyingPriceData.current.change >= 0 ? 'positive' : 'negative'}">
+                                    ${underlyingPriceData.current.change >= 0 ? '+' : ''}${underlyingPriceData.current.change.toFixed(2)} 
+                                    (${underlyingPriceData.current.changePercent.toFixed(2)}%)
+                                </div>
+                            </div>
                         ` : ''}
                     </div>
 
-                    ${prices ? `
+                    ${underlyingPriceData ? `
+                        <div class="price-ranges">
+                            <div class="price-range">
+                                <h4>Today's Range</h4>
+                                <div class="range-values">
+                                    <div class="range-value">
+                                        <div class="range-label">Open</div>
+                                        <div class="range-price">₹${underlyingPriceData.today.open.toFixed(2)}</div>
+                                    </div>
+                                    <div class="range-value">
+                                        <div class="range-label">High</div>
+                                        <div class="range-price">₹${underlyingPriceData.today.high.toFixed(2)}</div>
+                                    </div>
+                                    <div class="range-value">
+                                        <div class="range-label">Low</div>
+                                        <div class="range-price">₹${underlyingPriceData.today.low.toFixed(2)}</div>
+                                    </div>
+                                    <div class="range-value">
+                                        <div class="range-label">Close</div>
+                                        <div class="range-price">₹${underlyingPriceData.today.close.toFixed(2)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="price-range">
+                                <h4>Weekly Range</h4>
+                                <div class="range-values">
+                                    <div class="range-value">
+                                        <div class="range-label">High</div>
+                                        <div class="range-price">₹${underlyingPriceData.weekly.high.toFixed(2)}</div>
+                                        <div class="range-label" style="font-size: 0.7em; color: ${underlyingPriceData.weekly.changeFromWeekHigh >= 0 ? '#27ae60' : '#e74c3c'}">
+                                            ${underlyingPriceData.weekly.changeFromWeekHigh >= 0 ? '+' : ''}${underlyingPriceData.weekly.changeFromWeekHigh.toFixed(1)}%
+                                        </div>
+                                    </div>
+                                    <div class="range-value">
+                                        <div class="range-label">Low</div>
+                                        <div class="range-price">₹${underlyingPriceData.weekly.low.toFixed(2)}</div>
+                                        <div class="range-label" style="font-size: 0.7em; color: ${underlyingPriceData.weekly.changeFromWeekLow >= 0 ? '#27ae60' : '#e74c3c'}">
+                                            ${underlyingPriceData.weekly.changeFromWeekLow >= 0 ? '+' : ''}${underlyingPriceData.weekly.changeFromWeekLow.toFixed(1)}%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="price-range">
+                                <h4>Monthly Range</h4>
+                                <div class="range-values">
+                                    <div class="range-value">
+                                        <div class="range-label">High</div>
+                                        <div class="range-price">₹${underlyingPriceData.monthly.high.toFixed(2)}</div>
+                                        <div class="range-label" style="font-size: 0.7em; color: ${underlyingPriceData.monthly.changeFromMonthHigh >= 0 ? '#27ae60' : '#e74c3c'}">
+                                            ${underlyingPriceData.monthly.changeFromMonthHigh >= 0 ? '+' : ''}${underlyingPriceData.monthly.changeFromMonthHigh.toFixed(1)}%
+                                        </div>
+                                    </div>
+                                    <div class="range-value">
+                                        <div class="range-label">Low</div>
+                                        <div class="range-price">₹${underlyingPriceData.monthly.low.toFixed(2)}</div>
+                                        <div class="range-label" style="font-size: 0.7em; color: ${underlyingPriceData.monthly.changeFromMonthLow >= 0 ? '#27ae60' : '#e74c3c'}">
+                                            ${underlyingPriceData.monthly.changeFromMonthLow >= 0 ? '+' : ''}${underlyingPriceData.monthly.changeFromMonthLow.toFixed(1)}%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="price-range">
+                                <h4>52-Week Range</h4>
+                                <div class="range-values">
+                                    <div class="range-value">
+                                        <div class="range-label">High</div>
+                                        <div class="range-price">₹${underlyingPriceData.yearly.high52Week.toFixed(2)}</div>
+                                        <div class="range-label" style="font-size: 0.7em; color: ${underlyingPriceData.yearly.changeFrom52WeekHigh >= 0 ? '#27ae60' : '#e74c3c'}">
+                                            ${underlyingPriceData.yearly.changeFrom52WeekHigh >= 0 ? '+' : ''}${underlyingPriceData.yearly.changeFrom52WeekHigh.toFixed(1)}%
+                                        </div>
+                                    </div>
+                                    <div class="range-value">
+                                        <div class="range-label">Low</div>
+                                        <div class="range-price">₹${underlyingPriceData.yearly.low52Week.toFixed(2)}</div>
+                                        <div class="range-label" style="font-size: 0.7em; color: ${underlyingPriceData.yearly.changeFrom52WeekLow >= 0 ? '#27ae60' : '#e74c3c'}">
+                                            ${underlyingPriceData.yearly.changeFrom52WeekLow >= 0 ? '+' : ''}${underlyingPriceData.yearly.changeFrom52WeekLow.toFixed(1)}%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            ${underlyingPriceData.circuits.upperCircuit > 0 ? `
+                                <div class="price-range">
+                                    <h4>Circuit Limits</h4>
+                                    <div class="range-values">
+                                        <div class="range-value">
+                                            <div class="range-label">Upper</div>
+                                            <div class="range-price">₹${underlyingPriceData.circuits.upperCircuit.toFixed(2)}</div>
+                                            <div class="range-label" style="font-size: 0.7em; color: #e67e22">
+                                                ${underlyingPriceData.circuits.distanceFromUpperCircuit.toFixed(1)}% away
+                                            </div>
+                                        </div>
+                                        <div class="range-value">
+                                            <div class="range-label">Lower</div>
+                                            <div class="range-price">₹${underlyingPriceData.circuits.lowerCircuit.toFixed(2)}</div>
+                                            <div class="range-label" style="font-size: 0.7em; color: #e67e22">
+                                                ${underlyingPriceData.circuits.distanceFromLowerCircuit.toFixed(1)}% away
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    ` : prices ? `
                         <div class="price-ranges">
                             <div class="price-range">
                                 <h4>Today's Range</h4>
