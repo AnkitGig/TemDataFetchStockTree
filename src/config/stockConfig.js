@@ -1,13 +1,13 @@
 const STOCK_CONFIG = {
   NSE: [
-    { token: "3045", symbol: "SBIN", name: "State Bank of India" },
-    { token: "881", symbol: "RELIANCE", name: "Reliance Industries Ltd" },
-    { token: "99926004", symbol: "INFY", name: "Infosys Ltd" },
-    { token: "2885", symbol: "TCS", name: "Tata Consultancy Services" },
-    { token: "1333", symbol: "HDFCBANK", name: "HDFC Bank Ltd" },
+    // { token: "3045", symbol: "SBIN", name: "State Bank of India" },
+    // { token: "881", symbol: "RELIANCE", name: "Reliance Industries Ltd" },
+    // { token: "99926004", symbol: "INFY", name: "Infosys Ltd" },
+    // { token: "2885", symbol: "TCS", name: "Tata Consultancy Services" },
+    // { token: "1333", symbol: "HDFCBANK", name: "HDFC Bank Ltd" },
     { token: "17963", symbol: "ITC", name: "ITC Ltd" },
-    { token: "11536", symbol: "LT", name: "Larsen & Toubro Ltd" },
-    { token: "1660", symbol: "KOTAKBANK", name: "Kotak Mahindra Bank" },
+    { token: "11536", symbol: "LT", name: "Larsen & Toubro Ltd" }, // Commented out as per previous instructions
+    // { token: "1660", symbol: "KOTAKBANK", name: "Kotak Mahindra Bank" },
     { token: "288", symbol: "AXISBANK", name: "Axis Bank Ltd" },
     { token: "5633", symbol: "MARUTI", name: "Maruti Suzuki India Ltd" },
     { token: "1594", symbol: "ICICIBANK", name: "ICICI Bank Ltd" },
@@ -25,7 +25,7 @@ const STOCK_CONFIG = {
     FINNIFTY: { token: "99926037", name: "Fin Nifty", lotSize: 40, exchange: "NFO" },
     RELIANCE: { token: "881", name: "Reliance Industries", lotSize: 250, exchange: "NFO" },
     TCS: { token: "2885", name: "Tata Consultancy Services", lotSize: 125, exchange: "NFO" },
-    HDFCBANK: { token: "1333", name: "HDFC Bank", lotSize: 550, exchange: "NFO" },
+    // HDFCBANK: { token: "1333", name: "HDFC Bank", lotSize: 550, exchange: "NFO" },
     ICICIBANK: { token: "1594", name: "ICICI Bank", lotSize: 1375, exchange: "NFO" },
     INFY: { token: "99926004", name: "Infosys", lotSize: 300, exchange: "NFO" },
     ITC: { token: "17963", name: "ITC", lotSize: 3200, exchange: "NFO" },
@@ -155,8 +155,6 @@ module.exports = {
   getOptionUnderlyings,
   getOptionUnderlying,
   getStockByToken,
-
-
   searchStocks,
   getTokensByExchange,
 }

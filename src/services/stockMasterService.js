@@ -9,40 +9,58 @@ class StockMasterService {
     this.lastFetchTime = null
     this.cacheExpiry = 24 * 60 * 60 * 1000 // 24 hours
     this.isLoading = false
+    this.isInitialized = false // New flag
+    this.initializationPromise = null // To prevent multiple initializations
   }
 
   async initialize() {
+    if (this.isInitialized) {
+      console.log("📊 Stock Master Service already initialized.")
+      return Promise.resolve() // Already initialized, return resolved promise
+    }
     if (this.isLoading) {
-      console.log("📊 Stock master already loading...")
-      return
+      console.log("📊 Stock Master Service initialization already in progress, waiting...")
+      return this.initializationPromise // Return existing promise
     }
 
-    try {
-      this.isLoading = true
-      console.log("📊 Initializing Stock Master Service...")
+    this.isLoading = true
+    this.initializationPromise = this._initializeInternal() // Store the promise
+    return this.initializationPromise
+  }
 
+  async _initializeInternal() {
+    try {
+      console.log("📊 Starting Stock Master Service initialization...")
       await this.fetchStockMaster()
-      console.log(`✅ Stock Master initialized with ${this.stockMaster.length} instruments`)
+      this.isInitialized = true
+      console.log(`✅ Stock Master Service initialized with ${this.stockMaster.length} instruments.`)
       console.log(`📊 Lookup maps built: Tokens: ${this.stockMap.size}, Symbols: ${this.symbolMap.size}`)
     } catch (error) {
-      console.error("❌ Error initializing Stock Master:", error.message)
+      console.error("❌ Failed to initialize Stock Master Service:", error.message)
+      // Do not set isInitialized to true on failure, allow re-attempt
+      throw error // Re-throw to propagate the error
     } finally {
       this.isLoading = false
     }
   }
 
-  async fetchStockMaster() {
+  async fetchStockMaster(retryCount = 0) {
+    const maxRetries = 3
+    const retryDelay = 5000 // 5 seconds
+
     try {
       // Check if we have cached data that's still valid
       if (this.stockMaster.length > 0 && this.lastFetchTime) {
         const timeSinceLastFetch = Date.now() - this.lastFetchTime.getTime()
         if (timeSinceLastFetch < this.cacheExpiry) {
-          console.log("📊 Using cached stock master data")
+          console.log("📊 Using valid cached stock master data.")
           return this.stockMaster
         }
       }
 
-      console.log("📊 Attempting to fetch fresh stock master data from Angel Broking API...")
+      console.log(
+        `📊 Attempting to fetch fresh stock master data from Angel Broking API (Attempt ${retryCount + 1}/${maxRetries + 1})...`,
+      )
       const response = await axios.get(
         "https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json",
         {
@@ -54,14 +72,14 @@ class StockMasterService {
       )
 
       if (response.data && Array.isArray(response.data)) {
-        console.log(`✅ Received ${response.data.length} records from Angel Broking API.`)
+        console.log(`✅ Successfully received ${response.data.length} records from Angel Broking API.`)
         this.stockMaster = response.data
         this.lastFetchTime = new Date()
 
         // Build lookup maps for performance
         this.buildLookupMaps()
 
-        console.log(`✅ Fetched ${this.stockMaster.length} instruments from Angel Broking`)
+        console.log(`✅ Fetched ${this.stockMaster.length} instruments from Angel Broking.`)
         console.log(`📊 Breakdown:`)
         console.log(`   NSE Equity: ${this.getEquityCount("NSE")}`)
         console.log(`   BSE Equity: ${this.getEquityCount("BSE")}`)
@@ -70,22 +88,28 @@ class StockMasterService {
 
         return this.stockMaster
       } else {
-        throw new Error("Invalid response format from Angel Broking API")
+        throw new Error("Invalid response format from Angel Broking API.")
       }
     } catch (error) {
-      console.error("❌ Error fetching stock master:", error.message)
+      console.error(`❌ Error fetching stock master (Attempt ${retryCount + 1}):`, error.message)
       if (error.response) {
         console.error("   Status:", error.response.status)
         console.error("   Data:", error.response.data)
       }
 
-      // If we have cached data, use it even if expired
-      if (this.stockMaster.length > 0) {
-        console.log("⚠️ Using expired cached data as fallback")
-        return this.stockMaster
+      if (retryCount < maxRetries) {
+        console.log(`🔄 Retrying fetch in ${retryDelay / 1000} seconds...`)
+        await new Promise((resolve) => setTimeout(resolve, retryDelay))
+        return this.fetchStockMaster(retryCount + 1)
+      } else {
+        // If we have cached data, use it even if expired after all retries fail
+        if (this.stockMaster.length > 0) {
+          console.log("⚠️ All retries failed. Using expired cached data as fallback.")
+          return this.stockMaster
+        }
+        console.error("❌ All retries failed and no cached data available. Stock master will be empty.")
+        throw error // Re-throw if no data at all
       }
-
-      throw error
     }
   }
 
@@ -377,17 +401,26 @@ class StockMasterService {
 
           // Import marketDataService here to avoid circular dependency
           const marketDataService = require("./marketDataService")
-          const priceRanges = await marketDataService.getStockPriceRanges(authToken, stockInfo)
+          const priceRanges = await marketDataService.getUnderlyingPriceRanges(authToken, stockInfo.symbol) // Use getUnderlyingPriceRanges
           stockDetails.priceRanges = priceRanges
           console.log(`✅ Successfully added price ranges for ${symbol}`)
         } catch (priceError) {
-          console.error(`❌ Error fetching price ranges for ${symbol}:`, priceError.message)
+          console.error(
+            `❌ Error fetching price ranges for ${symbol} via getUnderlyingPriceRanges:`,
+            priceError.message,
+          )
 
-          // Try alternative method - fetch from general market data
+          // Try alternative method - fetch from general market data for this specific stock
           try {
-            console.log(`📊 Trying alternative price fetch for ${symbol}`)
+            console.log(`📊 Trying alternative price fetch for ${symbol} using its specific token and exchange.`)
             const marketDataService = require("./marketDataService")
-            const result = await marketDataService.fetchMarketData(authToken, "FULL")
+
+            // Construct a specific request payload for this stock's token and exchange
+            const specificExchangeTokens = {
+              [stockInfo.exch_seg]: [stockInfo.token],
+            }
+
+            const result = await marketDataService.fetchMarketData(authToken, "FULL", specificExchangeTokens) // Pass specific tokens
             const stockData = result.data?.find(
               (item) => item.symbol?.toUpperCase() === symbol.toUpperCase() || item.token === stockInfo.token,
             )
@@ -433,9 +466,9 @@ class StockMasterService {
                   symbol: stockInfo.symbol,
                   token: stockInfo.token,
                   exchange: stockInfo.exch_seg,
-                  instrumentType: stockInfo.instrumenttype,
+                  instrumentType: stockInfo.instrumentType,
                   lastUpdated: new Date().toISOString(),
-                  dataSource: "angel_broking_market_data",
+                  dataSource: "angel_broking_market_data_fallback", // Indicate fallback source
                 },
               }
 
@@ -473,10 +506,12 @@ class StockMasterService {
                 }
               }
 
-              console.log(`✅ Successfully added price data via alternative method for ${symbol}`)
+              console.log(`✅ Successfully added price data via specific fallback method for ${symbol}`)
+            } else {
+              console.log(`⚠️ Specific fallback fetch did not return data for ${symbol}.`)
             }
           } catch (altError) {
-            console.error(`❌ Alternative price fetch also failed for ${symbol}:`, altError.message)
+            console.error(`❌ Specific fallback price fetch also failed for ${symbol}:`, altError.message)
           }
         }
       } else {

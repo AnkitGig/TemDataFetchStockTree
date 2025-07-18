@@ -11,14 +11,16 @@ class MarketDataService {
     this.cacheExpiry = 30 * 1000 // 30 seconds
   }
 
-  async fetchMarketData(authToken, mode = "FULL") {
+  async fetchMarketData(authToken, mode = "FULL", specificExchangeTokens = null) {
+    // Added specificExchangeTokens parameter
     try {
       if (!authToken) {
         throw new Error("Authentication token required")
       }
 
       // Check cache first
-      const cacheKey = `market_data_${mode}`
+      // Updated cache key to include specific tokens if provided, for better caching granularity
+      const cacheKey = `market_data_${mode}_${specificExchangeTokens ? JSON.stringify(specificExchangeTokens) : "all"}`
       const cached = this.getFromCache(cacheKey)
       if (cached) {
         console.log(`📊 Returning cached market data (${mode} mode)`)
@@ -30,8 +32,8 @@ class MarketDataService {
         }
       }
 
-      // Get enhanced token list from stock master service
-      const exchangeTokens = getTokensByExchange()
+      // Get enhanced token list from stock master service OR use specific tokens if provided
+      const exchangeTokens = specificExchangeTokens || getTokensByExchange()
 
       const requestPayload = {
         mode: mode,
@@ -156,13 +158,18 @@ class MarketDataService {
       const underlyingConfig = getOptionUnderlying(underlying)
 
       let stockInfo = null
+      let targetExchange = "NSE" // Default exchange
+
       if (!underlyingConfig) {
         // Try to find in stock master service
         stockInfo = stockMasterService.getStockBySymbol(underlying)
 
         if (!stockInfo) {
-          throw new Error(`Underlying ${underlying} not found in configuration`)
+          throw new Error(`Underlying ${underlying} not found in configuration or stock master.`)
         }
+        targetExchange = stockInfo.exch_seg || "NSE" // Use exchange from stockMasterService if found
+      } else {
+        targetExchange = underlyingConfig.exchange || "NSE" // Use exchange from static config
       }
 
       const token = underlyingConfig ? underlyingConfig.token : stockInfo.token
@@ -171,7 +178,7 @@ class MarketDataService {
       const requestPayload = {
         mode: "FULL",
         exchangeTokens: {
-          [underlyingConfig?.exchange || "NSE"]: [token],
+          [targetExchange]: [token], // Use the determined targetExchange
         },
       }
 
@@ -258,7 +265,7 @@ class MarketDataService {
           metadata: {
             symbol: underlying.toUpperCase(),
             token: token,
-            exchange: underlyingConfig?.exchange || "NSE",
+            exchange: targetExchange, // Use targetExchange here too
             lotSize: underlyingConfig?.lotSize || 1,
             lastUpdated: new Date().toISOString(),
             dataSource: "angel_broking_api",
@@ -268,7 +275,7 @@ class MarketDataService {
         console.log(`✅ Fetched comprehensive price ranges for ${underlying}`)
         return priceRanges
       } else {
-        throw new Error(`No data available for underlying ${underlying}`)
+        throw new Error(`No data available for underlying ${underlying} on exchange ${targetExchange}`)
       }
     } catch (error) {
       console.error(`❌ Error fetching price ranges for ${underlying}:`, error.message)
