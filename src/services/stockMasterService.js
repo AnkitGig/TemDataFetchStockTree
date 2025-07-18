@@ -297,6 +297,233 @@ class StockMasterService {
     return match ? match[1] : null
   }
 
+  // Get comprehensive stock details with price ranges
+  async getStockDetails(symbol, authToken = null) {
+    try {
+      console.log(`📊 Getting comprehensive stock details for ${symbol}`)
+
+      // First, find the stock in our database
+      let stockInfo = this.getStockBySymbol(symbol)
+
+      // If not found in stock master, try static config
+      if (!stockInfo) {
+        const { searchStocks } = require("../config/stockConfig")
+        const staticResults = searchStocks(symbol)
+
+        if (staticResults.length > 0) {
+          const staticStock = staticResults[0]
+          stockInfo = {
+            token: staticStock.token,
+            symbol: staticStock.symbol,
+            name: staticStock.name,
+            exch_seg: staticStock.exchange || "NSE",
+            instrumenttype: "EQ",
+            lotsize: 1,
+          }
+          console.log(`📊 Found ${symbol} in static config`)
+        }
+      }
+
+      if (!stockInfo) {
+        throw new Error(`Stock ${symbol} not found`)
+      }
+
+      // Basic stock information
+      const stockDetails = {
+        basic: {
+          token: stockInfo.token,
+          symbol: stockInfo.symbol,
+          name: stockInfo.name || stockInfo.symbol,
+          exchange: stockInfo.exch_seg,
+          instrumentType: stockInfo.instrumenttype,
+          lotSize: stockInfo.lotsize || 1,
+          isin: stockInfo.isin || null,
+        },
+        priceRanges: null,
+        derivatives: {
+          hasFutures: false,
+          hasOptions: false,
+          futures: [],
+          options: [],
+          expiries: [],
+        },
+      }
+
+      // ALWAYS try to fetch live price data if we have auth token
+      if (authToken && stockInfo.token) {
+        try {
+          console.log(`📊 Fetching live price data for ${symbol} (token: ${stockInfo.token})`)
+
+          // Import marketDataService here to avoid circular dependency
+          const marketDataService = require("./marketDataService")
+          const priceRanges = await marketDataService.getStockPriceRanges(authToken, stockInfo)
+          stockDetails.priceRanges = priceRanges
+          console.log(`✅ Successfully added price ranges for ${symbol}`)
+        } catch (priceError) {
+          console.error(`❌ Error fetching price ranges for ${symbol}:`, priceError.message)
+
+          // Try alternative method - fetch from general market data
+          try {
+            console.log(`📊 Trying alternative price fetch for ${symbol}`)
+            const marketDataService = require("./marketDataService")
+            const result = await marketDataService.fetchMarketData(authToken, "FULL")
+            const stockData = result.data?.find(
+              (item) => item.symbol?.toUpperCase() === symbol.toUpperCase() || item.token === stockInfo.token,
+            )
+
+            if (stockData) {
+              stockDetails.priceRanges = {
+                current: {
+                  ltp: Number.parseFloat((stockData.ltp || 0).toFixed(2)),
+                  change: Number.parseFloat((stockData.change || 0).toFixed(2)),
+                  changePercent: Number.parseFloat((stockData.changePercent || 0).toFixed(2)),
+                  volume: stockData.volume || 0,
+                  avgPrice: Number.parseFloat((stockData.avgPrice || 0).toFixed(2)),
+                  timestamp: new Date().toISOString(),
+                },
+                today: {
+                  open: Number.parseFloat((stockData.open || 0).toFixed(2)),
+                  high: Number.parseFloat((stockData.high || 0).toFixed(2)),
+                  low: Number.parseFloat((stockData.low || 0).toFixed(2)),
+                  close: Number.parseFloat((stockData.close || 0).toFixed(2)),
+                  volume: stockData.volume || 0,
+                },
+                yearly: {
+                  high52Week: Number.parseFloat((stockData.weekHigh52 || 0).toFixed(2)),
+                  low52Week: Number.parseFloat((stockData.weekLow52 || 0).toFixed(2)),
+                  changeFrom52WeekHigh:
+                    stockData.weekHigh52 > 0
+                      ? Number.parseFloat(
+                          (((stockData.ltp - stockData.weekHigh52) / stockData.weekHigh52) * 100).toFixed(2),
+                        )
+                      : 0,
+                  changeFrom52WeekLow:
+                    stockData.weekLow52 > 0
+                      ? Number.parseFloat(
+                          (((stockData.ltp - stockData.weekLow52) / stockData.weekLow52) * 100).toFixed(2),
+                        )
+                      : 0,
+                },
+                circuits: {
+                  upperCircuit: Number.parseFloat((stockData.upperCircuit || 0).toFixed(2)),
+                  lowerCircuit: Number.parseFloat((stockData.lowerCircuit || 0).toFixed(2)),
+                },
+                metadata: {
+                  symbol: stockInfo.symbol,
+                  token: stockInfo.token,
+                  exchange: stockInfo.exch_seg,
+                  instrumentType: stockInfo.instrumenttype,
+                  lastUpdated: new Date().toISOString(),
+                  dataSource: "angel_broking_market_data",
+                },
+              }
+
+              // Calculate estimated weekly and monthly ranges
+              const currentPrice = stockData.ltp || 0
+              const high52Week = stockData.weekHigh52 || 0
+              const low52Week = stockData.weekLow52 || 0
+
+              if (currentPrice > 0) {
+                const estimatedMonthlyHigh = Math.min(high52Week, currentPrice * 1.12)
+                const estimatedMonthlyLow = Math.max(low52Week, currentPrice * 0.88)
+                const estimatedWeeklyHigh = Math.min(estimatedMonthlyHigh, currentPrice * 1.05)
+                const estimatedWeeklyLow = Math.max(estimatedMonthlyLow, currentPrice * 0.95)
+
+                stockDetails.priceRanges.weekly = {
+                  high: Number.parseFloat(estimatedWeeklyHigh.toFixed(2)),
+                  low: Number.parseFloat(estimatedWeeklyLow.toFixed(2)),
+                  changeFromWeekHigh: Number.parseFloat(
+                    (((currentPrice - estimatedWeeklyHigh) / estimatedWeeklyHigh) * 100).toFixed(2),
+                  ),
+                  changeFromWeekLow: Number.parseFloat(
+                    (((currentPrice - estimatedWeeklyLow) / estimatedWeeklyLow) * 100).toFixed(2),
+                  ),
+                }
+
+                stockDetails.priceRanges.monthly = {
+                  high: Number.parseFloat(estimatedMonthlyHigh.toFixed(2)),
+                  low: Number.parseFloat(estimatedMonthlyLow.toFixed(2)),
+                  changeFromMonthHigh: Number.parseFloat(
+                    (((currentPrice - estimatedMonthlyHigh) / estimatedMonthlyHigh) * 100).toFixed(2),
+                  ),
+                  changeFromMonthLow: Number.parseFloat(
+                    (((currentPrice - estimatedMonthlyLow) / estimatedMonthlyLow) * 100).toFixed(2),
+                  ),
+                }
+              }
+
+              console.log(`✅ Successfully added price data via alternative method for ${symbol}`)
+            }
+          } catch (altError) {
+            console.error(`❌ Alternative price fetch also failed for ${symbol}:`, altError.message)
+          }
+        }
+      } else {
+        console.log(`⚠️ No auth token available for live price data for ${symbol}`)
+      }
+
+      // Check if stock has derivatives
+      const hasDerivatives = this.checkStockDerivatives(symbol)
+      if (hasDerivatives) {
+        stockDetails.derivatives = hasDerivatives
+      }
+
+      return stockDetails
+    } catch (error) {
+      console.error(`❌ Error getting stock details for ${symbol}:`, error.message)
+      throw error
+    }
+  }
+
+  // Check if stock has derivatives (futures/options)
+  checkStockDerivatives(symbol) {
+    const derivatives = {
+      hasFutures: false,
+      hasOptions: false,
+      futures: [],
+      options: [],
+      expiries: [],
+    }
+
+    // Check in stock master for derivative instruments
+    const futureContracts = this.stockMaster.filter(
+      (stock) =>
+        stock.symbol.startsWith(symbol) && (stock.instrumenttype === "FUTIDX" || stock.instrumenttype === "FUTSTK"),
+    )
+
+    const optionContracts = this.stockMaster.filter(
+      (stock) =>
+        stock.symbol.startsWith(symbol) && (stock.instrumenttype === "OPTIDX" || stock.instrumenttype === "OPTSTK"),
+    )
+
+    if (futureContracts.length > 0) {
+      derivatives.hasFutures = true
+      derivatives.futures = futureContracts.map((contract) => ({
+        token: contract.token,
+        symbol: contract.symbol,
+        expiry: contract.expiry,
+        lotSize: contract.lotsize,
+      }))
+    }
+
+    if (optionContracts.length > 0) {
+      derivatives.hasOptions = true
+      derivatives.options = optionContracts.map((contract) => ({
+        token: contract.token,
+        symbol: contract.symbol,
+        expiry: contract.expiry,
+        strike: contract.strike,
+        optionType: contract.symbol.includes("CE") ? "CE" : "PE",
+        lotSize: contract.lotsize,
+      }))
+
+      // Get unique expiries
+      derivatives.expiries = [...new Set(optionContracts.map((c) => c.expiry).filter((e) => e))].sort()
+    }
+
+    return derivatives
+  }
+
   // Helper methods for statistics
   getEquityCount(exchange) {
     return this.stockMaster.filter((stock) => stock.exch_seg === exchange && stock.instrumenttype === "EQ").length

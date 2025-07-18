@@ -330,6 +330,69 @@
                 gap: 10px;
             }
         }
+
+        .stock-price-main {
+            text-align: right;
+            margin-left: auto; /* Pushes it to the right */
+        }
+
+        .stock-price-main .ltp {
+            font-size: 2.5em; /* Larger font for main price */
+            font-weight: bold;
+            color: #2c3e50;
+            line-height: 1;
+        }
+
+        .stock-price-main .currency {
+            font-size: 0.6em;
+            vertical-align: super;
+            opacity: 0.8;
+        }
+
+        .stock-price-main .change {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .stock-price-main .today-label {
+            font-size: 0.8em;
+            opacity: 0.7;
+            margin-left: 5px;
+        }
+
+        .stock-price-main .timestamp {
+            font-size: 0.8em;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+
+        .daily-yearly-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .summary-item {
+            text-align: center;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .summary-label {
+            font-size: 0.8em;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+
+        .summary-value {
+            font-weight: bold;
+            color: #2c3e50;
+        }
     </style>
 </head>
 <body>
@@ -695,24 +758,26 @@
                 <div class="stock-card">
                     <div class="stock-header">
                         <div>
-                            <div class="stock-symbol">${stock.symbol}</div>
                             <div class="stock-name">${stock.name}</div>
+                            <div class="stock-symbol">${stock.symbol}</div>
                         </div>
                         ${prices ? `
-                            <div class="stock-price">
-                                <div class="ltp">₹${prices.current.ltp.toFixed(2)}</div>
+                            <div class="stock-price-main">
+                                <div class="ltp">₹${prices.current.ltp.toFixed(2)} <span class="currency">INR</span></div>
                                 <div class="change ${prices.current.change >= 0 ? 'positive' : 'negative'}">
                                     ${prices.current.change >= 0 ? '+' : ''}${prices.current.change.toFixed(2)} 
-                                    (${prices.current.changePercent.toFixed(2)}%)
+                                    (${prices.current.changePercent.toFixed(2)}%) <span class="today-label">today</span>
                                 </div>
+                                <div class="timestamp">${prices.current.timestamp ? new Date(prices.current.timestamp).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true, timeZoneName: 'short' }) : ''}</div>
                             </div>
                         ` : underlyingPriceData ? `
-                            <div class="stock-price">
-                                <div class="ltp">₹${underlyingPriceData.current.ltp.toFixed(2)}</div>
+                            <div class="stock-price-main">
+                                <div class="ltp">₹${underlyingPriceData.current.ltp.toFixed(2)} <span class="currency">INR</span></div>
                                 <div class="change ${underlyingPriceData.current.change >= 0 ? 'positive' : 'negative'}">
                                     ${underlyingPriceData.current.change >= 0 ? '+' : ''}${underlyingPriceData.current.change.toFixed(2)} 
-                                    (${underlyingPriceData.current.changePercent.toFixed(2)}%)
+                                    (${underlyingPriceData.current.changePercent.toFixed(2)}%) <span class="today-label">today</span>
                                 </div>
+                                <div class="timestamp">${underlyingPriceData.current.timestamp ? new Date(underlyingPriceData.current.timestamp).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true, timeZoneName: 'short' }) : ''}</div>
                             </div>
                         ` : ''}
                     </div>
@@ -867,6 +932,54 @@
                                         <div class="range-price">₹${prices.yearly.low52Week.toFixed(2)}</div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${prices ? `
+                        <div class="daily-yearly-summary">
+                            <div class="summary-item">
+                                <div class="summary-label">Open</div>
+                                <div class="summary-value">₹${prices.today.open.toFixed(2)}</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">High</div>
+                                <div class="summary-value">₹${prices.today.high.toFixed(2)}</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Low</div>
+                                <div class="summary-value">₹${prices.today.low.toFixed(2)}</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">52-wk high</div>
+                                <div class="summary-value">₹${prices.yearly.high52Week.toFixed(2)}</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">52-wk low</div>
+                                <div class="summary-value">₹${prices.yearly.low52Week.toFixed(2)}</div>
+                            </div>
+                        </div>
+                    ` : underlyingPriceData ? `
+                        <div class="daily-yearly-summary">
+                            <div class="summary-item">
+                                <div class="summary-label">Open</div>
+                                <div class="summary-value">₹${underlyingPriceData.today.open.toFixed(2)}</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">High</div>
+                                <div class="summary-value">₹${underlyingPriceData.today.high.toFixed(2)}</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">Low</div>
+                                <div class="summary-value">₹${underlyingPriceData.today.low.toFixed(2)}</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">52-wk high</div>
+                                <div class="summary-value">₹${underlyingPriceData.yearly.high52Week.toFixed(2)}</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-label">52-wk low</div>
+                                <div class="summary-value">₹${underlyingPriceData.yearly.low52Week.toFixed(2)}</div>
                             </div>
                         </div>
                     ` : ''}

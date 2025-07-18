@@ -1064,3 +1064,4 @@ module.exports = {
   getStockDetails,
   getComprehensiveOptionChain,
 }
+
