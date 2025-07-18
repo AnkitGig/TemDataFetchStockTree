@@ -23,6 +23,7 @@ class StockMasterService {
 
       await this.fetchStockMaster()
       console.log(`✅ Stock Master initialized with ${this.stockMaster.length} instruments`)
+      console.log(`📊 Lookup maps built: Tokens: ${this.stockMap.size}, Symbols: ${this.symbolMap.size}`)
     } catch (error) {
       console.error("❌ Error initializing Stock Master:", error.message)
     } finally {
@@ -41,8 +42,7 @@ class StockMasterService {
         }
       }
 
-      console.log("📊 Fetching fresh stock master data from Angel Broking...")
-
+      console.log("📊 Attempting to fetch fresh stock master data from Angel Broking API...")
       const response = await axios.get(
         "https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json",
         {
@@ -54,6 +54,7 @@ class StockMasterService {
       )
 
       if (response.data && Array.isArray(response.data)) {
+        console.log(`✅ Received ${response.data.length} records from Angel Broking API.`)
         this.stockMaster = response.data
         this.lastFetchTime = new Date()
 
@@ -73,6 +74,10 @@ class StockMasterService {
       }
     } catch (error) {
       console.error("❌ Error fetching stock master:", error.message)
+      if (error.response) {
+        console.error("   Status:", error.response.status)
+        console.error("   Data:", error.response.data)
+      }
 
       // If we have cached data, use it even if expired
       if (this.stockMaster.length > 0) {
@@ -85,7 +90,7 @@ class StockMasterService {
   }
 
   buildLookupMaps() {
-    console.log("📊 Building lookup maps...")
+    console.log("📊 Starting to build lookup maps...")
 
     this.stockMap.clear()
     this.symbolMap.clear()
@@ -131,22 +136,34 @@ class StockMasterService {
     // First, add results from existing static config (these are prioritized)
     const staticResults = this.searchStaticConfig(query)
     results.push(...staticResults)
+    console.log(`🔍 Initial static search results count: ${staticResults.length}`)
+    console.log(`🔍 Total instruments in stockMaster for search: ${this.stockMaster.length}`) // Added log
 
     // Then search through the comprehensive stock master
     for (const stock of this.stockMaster) {
       if (results.length >= limit) break
 
       // Skip if already included from static config
-      if (staticResults.some((r) => r.token === stock.token)) continue
+      if (staticResults.some((r) => r.token === stock.token)) {
+        // console.log(`🔍 Skipping ${stock.symbol} (already in static config)`); // Debug: too verbose
+        continue
+      }
 
       // Filter by exchange
-      if (!exchanges.includes(stock.exch_seg)) continue
+      if (!exchanges.includes(stock.exch_seg)) {
+        // console.log(`🔍 Skipping ${stock.symbol} (exchange ${stock.exch_seg} not in ${exchanges.join(',')})`); // Debug: too verbose
+        continue
+      }
 
       // Filter by instrument type
-      if (!instrumentTypes.includes(stock.instrumenttype)) continue
+      if (!instrumentTypes.includes(stock.instrumenttype)) {
+        // console.log(`🔍 Skipping ${stock.symbol} (instrument type ${stock.instrumenttype} not in ${instrumentTypes.join(',')})`); // Debug: too verbose
+        continue
+      }
 
       // Skip expired instruments unless requested
       if (!includeExpired && stock.expiry && stock.expiry !== "" && new Date(stock.expiry) < new Date()) {
+        // console.log(`🔍 Skipping ${stock.symbol} (expired)`); // Debug: too verbose
         continue
       }
 
@@ -155,9 +172,14 @@ class StockMasterService {
       const nameMatch = stock.name && stock.name.toLowerCase().includes(searchTerm)
 
       if (symbolMatch || nameMatch) {
-        results.push(this.formatStockResult(stock))
+        const formattedStock = this.formatStockResult(stock)
+        results.push(formattedStock)
+        console.log(
+          `✅ Added stock from master to results: ${formattedStock.symbol} (Type: ${formattedStock.type}, Source: ${formattedStock.source})`,
+        ) // Enhanced log
       }
     }
+    console.log(`🔍 Total results before slicing: ${results.length}`)
 
     return results.slice(0, limit)
   }
@@ -291,7 +313,6 @@ class StockMasterService {
   }
 
   extractUnderlyingFromOption(optionSymbol) {
-    // Extract underlying symbol from option symbol
     // Examples: NIFTY23NOV24000CE -> NIFTY, RELIANCE23NOV2800PE -> RELIANCE
     const match = optionSymbol.match(/^([A-Z]+)/)
     return match ? match[1] : null
@@ -427,7 +448,7 @@ class StockMasterService {
                 const estimatedMonthlyHigh = Math.min(high52Week, currentPrice * 1.12)
                 const estimatedMonthlyLow = Math.max(low52Week, currentPrice * 0.88)
                 const estimatedWeeklyHigh = Math.min(estimatedMonthlyHigh, currentPrice * 1.05)
-                const estimatedWeeklyLow = Math.max(estimatedMonthlyLow, currentPrice * 0.95)
+                const estimatedWeeklyLow = Math.max(low52Week, currentPrice * 0.95)
 
                 stockDetails.priceRanges.weekly = {
                   high: Number.parseFloat(estimatedWeeklyHigh.toFixed(2)),
