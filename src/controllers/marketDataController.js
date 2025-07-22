@@ -338,7 +338,88 @@ const getOptionsByExpiry = async (req, res) => {
   }
 }
 
-// Get specific strike price data
+// NEW: Get all expiries for a specific strike
+const getOptionsByStrike = async (req, res) => {
+  try {
+    const { underlying, strike } = req.params
+    const strikePrice = Number.parseInt(strike)
+
+    console.log(`📊 Getting all expiries for ${underlying} strike ${strikePrice}`)
+
+    if (!authService.isAuthenticated()) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required for live option data",
+        loginEndpoint: "/api/auth/login",
+      })
+    }
+
+    const authToken = authService.getAuthToken()
+
+    // Get all options from cache
+    let optionData = await optionChainService.getAllOptionsFromCache(underlying)
+
+    // If no cached data, fetch fresh
+    if (optionData.length === 0) {
+      console.log(`📊 No cached data, fetching fresh option chain for ${underlying}`)
+      const result = await optionChainService.fetchOptionChainData(authToken, underlying)
+      if (result.success) {
+        optionData = await optionChainService.getAllOptionsFromCache(underlying)
+      }
+    }
+
+    // Filter for specific strike price
+    const strikeOptions = optionData.filter((option) => option.strike === strikePrice)
+
+    if (strikeOptions.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No option data found for ${underlying} strike ${strikePrice}`,
+        strikePrice: strikePrice,
+        underlying: underlying.toUpperCase(),
+        availableStrikes: [...new Set(optionData.map((opt) => opt.strike))].sort((a, b) => a - b),
+      })
+    }
+
+    // Group by expiry
+    const groupedByExpiry = {}
+    strikeOptions.forEach((option) => {
+      if (!groupedByExpiry[option.expiry]) {
+        groupedByExpiry[option.expiry] = {
+          expiry: option.expiry,
+          strike: strikePrice,
+          underlying: underlying.toUpperCase(),
+          CE: null,
+          PE: null,
+        }
+      }
+      groupedByExpiry[option.expiry][option.optionType] = option
+    })
+
+    const results = Object.values(groupedByExpiry).sort((a, b) => a.expiry.localeCompare(b.expiry))
+
+    res.json({
+      success: true,
+      strikePrice: strikePrice,
+      underlying: underlying.toUpperCase(),
+      results: results,
+      availableExpiries: results.map((r) => r.expiry),
+      count: results.length,
+      timestamp: new Date().toISOString(),
+      source: "live_api_strike_search",
+    })
+  } catch (error) {
+    console.error("❌ Error getting options by strike:", error)
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      strikePrice: req.params.strike,
+      underlying: req.params.underlying,
+    })
+  }
+}
+
+// Get specific strike price data with flexible expiry matching
 const getOptionByStrike = async (req, res) => {
   try {
     const { underlying, strike, expiry } = req.params
@@ -358,45 +439,83 @@ const getOptionByStrike = async (req, res) => {
     const authToken = authService.getAuthToken()
 
     // First try to get from cache
-    let optionData = await optionChainService.getOptionsByExpiry(underlying, expiry)
+    let optionData = await optionChainService.getAllOptionsFromCache(underlying)
 
     // If no cached data, fetch fresh
     if (optionData.length === 0) {
       console.log(`📊 No cached data, fetching fresh option chain for ${underlying}`)
       const result = await optionChainService.fetchOptionChainData(authToken, underlying)
       if (result.success) {
-        optionData = await optionChainService.getOptionsByExpiry(underlying, expiry)
+        optionData = await optionChainService.getAllOptionsFromCache(underlying)
       }
     }
 
     // Filter for specific strike price
-    const callOption = optionData.find((option) => option.strike === strikePrice && option.optionType === "CE")
-    const putOption = optionData.find((option) => option.strike === strikePrice && option.optionType === "PE")
+    const strikeOptions = optionData.filter((option) => option.strike === strikePrice)
 
-    if (!callOption && !putOption) {
+    if (strikeOptions.length === 0) {
       return res.status(404).json({
         success: false,
-        message: `No option data found for ${underlying} strike ${strikePrice} expiry ${expiry}`,
+        message: `No option data found for ${underlying} strike ${strikePrice}`,
         strikePrice: strikePrice,
-        expiryDate: expiry,
         underlying: underlying.toUpperCase(),
+        availableStrikes: [...new Set(optionData.map((opt) => opt.strike))].sort((a, b) => a - b),
+        availableExpiries: [...new Set(optionData.map((opt) => opt.expiry))].sort(),
       })
     }
 
-    // Format response as requested
+    // Try exact expiry match first
+    let exactExpiryOptions = strikeOptions.filter((option) => option.expiry === expiry)
+
+    // If no exact match, try flexible matching
+    if (exactExpiryOptions.length === 0) {
+      console.log(`📊 No exact expiry match for ${expiry}, trying flexible matching`)
+
+      // Try partial date matching (e.g., "29JUL" matches "29JUL25")
+      const partialMatch = strikeOptions.filter(
+        (option) => option.expiry.includes(expiry) || expiry.includes(option.expiry),
+      )
+
+      if (partialMatch.length > 0) {
+        exactExpiryOptions = partialMatch
+        console.log(`📊 Found ${partialMatch.length} partial matches for expiry pattern: ${expiry}`)
+      } else {
+        // If still no match, get the nearest expiry
+        const nearestExpiry = strikeOptions.reduce((nearest, current) => {
+          return Math.abs(current.expiry.localeCompare(expiry)) < Math.abs(nearest.expiry.localeCompare(expiry))
+            ? current
+            : nearest
+        })
+        exactExpiryOptions = strikeOptions.filter((option) => option.expiry === nearestExpiry.expiry)
+        console.log(`📊 Using nearest expiry: ${nearestExpiry.expiry}`)
+      }
+    }
+
+    // Find call and put options
+    const callOption = exactExpiryOptions.find((option) => option.optionType === "CE")
+    const putOption = exactExpiryOptions.find((option) => option.optionType === "PE")
+
+    // Get the actual expiry being used
+    const actualExpiry = exactExpiryOptions[0]?.expiry || expiry
+
+    // Format response
     const response = {
       strikePrice: strikePrice,
-      expiryDate: expiry,
+      requestedExpiry: expiry,
+      actualExpiry: actualExpiry,
       underlying: underlying.toUpperCase(),
       fetchTime: new Date().toISOString(),
-      source: "live_api",
+      source: "live_api_with_flexible_matching",
+      matchType: exactExpiryOptions[0]?.expiry === expiry ? "exact" : "flexible",
+      availableExpiriesForStrike: [...new Set(strikeOptions.map((opt) => opt.expiry))].sort(),
     }
 
     if (callOption) {
       response.callOption = {
         symbol: callOption.symbol,
+        token: callOption.token,
         lastTradedPrice: callOption.ltp || 0,
-        price: callOption.price || 0,
+        price: callOption.price || callOption.ltp || 0,
         openInterest: callOption.openInterest || 0,
         changeInOI: callOption.changeInOI || 0,
         volume: callOption.volume || 0,
@@ -404,23 +523,50 @@ const getOptionByStrike = async (req, res) => {
         changePercent: callOption.changePercent || 0,
         high: callOption.high || 0,
         low: callOption.low || 0,
+        open: callOption.open || 0,
+        close: callOption.close || 0,
         impliedVolatility: callOption.impliedVolatility || 0,
+        delta: callOption.delta || 0,
+        gamma: callOption.gamma || 0,
+        theta: callOption.theta || 0,
+        vega: callOption.vega || 0,
+        lotSize: callOption.lotSize || 1,
+        expiry: callOption.expiry,
       }
     }
 
     if (putOption) {
       response.putOption = {
         symbol: putOption.symbol,
+        token: putOption.token,
         lastTradedPrice: putOption.ltp || 0,
-        price: putOption.price || 0,
-        openInterest: callOption.openInterest || 0,
-        changeInOI: callOption.changeInOI || 0,
-        volume: callOption.volume || 0,
-        change: callOption.change || 0,
-        changePercent: callOption.changePercent || 0,
-        high: callOption.high || 0,
-        low: callOption.low || 0,
-        impliedVolatility: callOption.impliedVolatility || 0,
+        price: putOption.price || putOption.ltp || 0,
+        openInterest: putOption.openInterest || 0,
+        changeInOI: putOption.changeInOI || 0,
+        volume: putOption.volume || 0,
+        change: putOption.change || 0,
+        changePercent: putOption.changePercent || 0,
+        high: putOption.high || 0,
+        low: putOption.low || 0,
+        open: putOption.open || 0,
+        close: putOption.close || 0,
+        impliedVolatility: putOption.impliedVolatility || 0,
+        delta: putOption.delta || 0,
+        gamma: putOption.gamma || 0,
+        theta: putOption.theta || 0,
+        vega: putOption.vega || 0,
+        lotSize: putOption.lotSize || 1,
+        expiry: putOption.expiry,
+      }
+    }
+
+    // Add summary if both options found
+    if (callOption && putOption) {
+      response.summary = {
+        totalVolume: (callOption.volume || 0) + (putOption.volume || 0),
+        totalOI: (callOption.openInterest || 0) + (putOption.openInterest || 0),
+        putCallRatio: callOption.openInterest > 0 ? (putOption.openInterest / callOption.openInterest).toFixed(2) : 0,
+        straddlePrice: (callOption.ltp || 0) + (putOption.ltp || 0),
       }
     }
 
@@ -431,7 +577,7 @@ const getOptionByStrike = async (req, res) => {
       success: false,
       message: error.message,
       strikePrice: req.params.strike,
-      expiryDate: req.params.expiry,
+      requestedExpiry: req.params.expiry,
       underlying: req.params.underlying,
     })
   }
@@ -782,6 +928,119 @@ const getComprehensiveOptionChain = async (req, res) => {
   }
 }
 
+// NEW: Flexible option search with partial matching
+const searchOptionsByStrikeAndExpiry = async (req, res) => {
+  try {
+    const { underlying } = req.params
+    const { strike, expiry, limit = 10 } = req.query
+
+    console.log(`🔍 Flexible search for ${underlying} - strike: ${strike}, expiry: ${expiry}`)
+
+    if (!authService.isAuthenticated()) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required for option search",
+        loginEndpoint: "/api/auth/login",
+      })
+    }
+
+    const authToken = authService.getAuthToken()
+
+    // Get all options from cache
+    let optionData = await optionChainService.getAllOptionsFromCache(underlying)
+
+    // If no cached data, fetch fresh
+    if (optionData.length === 0) {
+      console.log(`📊 No cached data, fetching fresh option chain for ${underlying}`)
+      const result = await optionChainService.fetchOptionChainData(authToken, underlying)
+      if (result.success) {
+        optionData = await optionChainService.getAllOptionsFromCache(underlying)
+      }
+    }
+
+    let filteredOptions = optionData
+
+    // Filter by strike if provided
+    if (strike) {
+      const strikeNum = Number.parseInt(strike)
+      if (!isNaN(strikeNum)) {
+        // Exact strike match
+        filteredOptions = filteredOptions.filter((opt) => opt.strike === strikeNum)
+      } else {
+        // Partial strike matching (e.g., "501" matches 50100, 50150, etc.)
+        filteredOptions = filteredOptions.filter((opt) => opt.strike.toString().includes(strike.toString()))
+      }
+    }
+
+    // Filter by expiry if provided
+    if (expiry) {
+      filteredOptions = filteredOptions.filter(
+        (opt) => opt.expiry.includes(expiry.toUpperCase()) || expiry.toUpperCase().includes(opt.expiry),
+      )
+    }
+
+    // Group by strike and expiry
+    const groupedOptions = {}
+    filteredOptions.forEach((option) => {
+      const key = `${option.strike}_${option.expiry}`
+      if (!groupedOptions[key]) {
+        groupedOptions[key] = {
+          strike: option.strike,
+          expiry: option.expiry,
+          underlying: option.underlying,
+          CE: null,
+          PE: null,
+        }
+      }
+      groupedOptions[key][option.optionType] = option
+    })
+
+    // Convert to array and sort
+    const sortedResults = Object.values(groupedOptions)
+      .sort((a, b) => {
+        if (a.expiry !== b.expiry) return a.expiry.localeCompare(b.expiry)
+        return a.strike - b.strike
+      })
+      .slice(0, Number.parseInt(limit))
+
+    // Calculate summary statistics
+    const summary = {
+      totalResults: sortedResults.length,
+      strikeRange:
+        sortedResults.length > 0
+          ? {
+              min: Math.min(...sortedResults.map((r) => r.strike)),
+              max: Math.max(...sortedResults.map((r) => r.strike)),
+            }
+          : null,
+      expiries: [...new Set(sortedResults.map((r) => r.expiry))].sort(),
+      totalVolume: filteredOptions.reduce((sum, opt) => sum + (opt.volume || 0), 0),
+      totalOI: filteredOptions.reduce((sum, opt) => sum + (opt.openInterest || 0), 0),
+    }
+
+    res.json({
+      success: true,
+      underlying: underlying.toUpperCase(),
+      searchCriteria: {
+        strike: strike || "all",
+        expiry: expiry || "all",
+        limit: Number.parseInt(limit),
+      },
+      results: sortedResults,
+      summary: summary,
+      timestamp: new Date().toISOString(),
+      source: "flexible_option_search",
+    })
+  } catch (error) {
+    console.error("❌ Error in flexible option search:", error)
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      underlying: req.params.underlying,
+    })
+  }
+}
+
 module.exports = {
   getMarketData,
   getLatestPrices,
@@ -793,7 +1052,9 @@ module.exports = {
   fetchOptionChainData,
   getOptionsByExpiry,
   getOptionByStrike,
+  getOptionsByStrike, // NEW
   getAvailableUnderlyings,
   getStockDetails,
   getComprehensiveOptionChain,
+  searchOptionsByStrikeAndExpiry, // NEW
 }

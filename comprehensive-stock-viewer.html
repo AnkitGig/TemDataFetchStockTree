@@ -938,6 +938,10 @@
                               ${optionSummary ? optionSummary.availableExpiries.map(exp => 
                                   `<option value="${exp}">${exp}</option>`
                               ).join('') : ''}
+                              
+                              <label style="margin-left: 20px;">Filter by Strike: </label>
+                              <input type="number" id="strikeFilter" placeholder="e.g., 23550" onchange="filterOptionsByStrike()" style="width: 120px;">
+                              <button onclick="clearFilters()" style="margin-left: 10px; padding: 8px 15px;">Clear Filters</button>
                           </select>
                       </div>
 
@@ -995,18 +999,42 @@
       document.getElementById('stockDetails').innerHTML = html;
   }
 
-      // Filter options by expiry
-      function filterOptionsByExpiry() {
+      // Filter options by strike price
+      function filterOptionsByStrike() {
+          const selectedStrike = document.getElementById('strikeFilter').value;
           const selectedExpiry = document.getElementById('expiryFilter').value;
           const rows = document.querySelectorAll('#optionTableBody tr');
           
           rows.forEach(row => {
-              if (!selectedExpiry || row.dataset.expiry === selectedExpiry) {
+              const strikeCell = row.querySelector('td:nth-child(7)'); // Strike column
+              const strikeValue = strikeCell ? strikeCell.textContent.replace('₹', '') : '';
+              
+              const strikeMatch = !selectedStrike || strikeValue === selectedStrike;
+              const expiryMatch = !selectedExpiry || row.dataset.expiry === selectedExpiry;
+              
+              if (strikeMatch && expiryMatch) {
                   row.style.display = '';
+                  row.style.backgroundColor = selectedStrike && strikeValue === selectedStrike ? '#fff3cd' : '';
               } else {
                   row.style.display = 'none';
               }
           });
+      }
+
+      // Clear all filters
+      function clearFilters() {
+          document.getElementById('strikeFilter').value = '';
+          document.getElementById('expiryFilter').value = '';
+          const rows = document.querySelectorAll('#optionTableBody tr');
+          rows.forEach(row => {
+              row.style.display = '';
+              row.style.backgroundColor = '';
+          });
+      }
+
+      // Update the existing filterOptionsByExpiry function to work with strike filter
+      function filterOptionsByExpiry() {
+          filterOptionsByStrike(); // This will handle both filters
       }
 
       // Load option chain
