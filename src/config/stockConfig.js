@@ -28,8 +28,10 @@ const STOCK_CONFIG = {
     // HDFCBANK: { token: "1333", name: "HDFC Bank", lotSize: 550, exchange: "NFO" },
     ICICIBANK: { token: "1594", name: "ICICI Bank", lotSize: 1375, exchange: "NFO" },
     INFY: { token: "99926004", name: "Infosys", lotSize: 300, exchange: "NFO" },
-    ITC: { token: "17963", name: "ITC", lotSize: 3200, exchange: "NFO" },
+    SENSEX: { token: "99926050", name: "Sensex", lotSize: 15, exchange: "BFO" },
     SBIN: { token: "3045", name: "State Bank of India", lotSize: 1500, exchange: "NFO" },
+    MIDCPNIFTY: { token: "99926038", name: "Nifty Midcap Select", lotSize: 75, exchange: "NFO" },
+    BANKEX: { token: "999920050", name: "BSE Bankex", lotSize: 15, exchange: "BFO" },
   },
 }
 
