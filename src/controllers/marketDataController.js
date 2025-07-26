@@ -544,7 +544,7 @@ const getOptionByStrike = async (req, res) => {
         openInterest: putOption.openInterest || 0,
         changeInOI: putOption.changeInOI || 0,
         volume: putOption.volume || 0,
-        change: putOption.change || 0,
+        change: callOption.change || 0,
         changePercent: putOption.changePercent || 0,
         high: putOption.high || 0,
         low: putOption.low || 0,
@@ -1041,6 +1041,446 @@ const searchOptionsByStrikeAndExpiry = async (req, res) => {
   }
 }
 
+// NEW: Live Options Data API for Add Call functionality
+const getLiveOptionsData = async (req, res) => {
+  try {
+    const { segment, instrument, script, expiry, strike, limit = 50 } = req.query
+
+    console.log(`📊 Fetching live options data with filters:`, {
+      segment,
+      instrument,
+      script,
+      expiry,
+      strike,
+      limit,
+    })
+
+    if (!authService.isAuthenticated()) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required for live options data",
+        loginEndpoint: "/api/auth/login",
+      })
+    }
+
+    const authToken = authService.getAuthToken()
+    const stockMasterService = require("../services/stockMasterService")
+
+    // Build search filters
+    const searchFilters = {
+      limit: Number.parseInt(limit),
+      exchanges: ["NFO", "BFO"], // Options exchanges
+      instrumentTypes: ["OPTIDX", "OPTSTK"], // Option instrument types
+    }
+
+    // Apply segment filter
+    if (segment) {
+      if (segment.toLowerCase() === "equity") {
+        searchFilters.instrumentTypes = ["OPTSTK"]
+      } else if (segment.toLowerCase() === "index") {
+        searchFilters.instrumentTypes = ["OPTIDX"]
+      }
+    }
+
+    // Get all option instruments
+    let optionInstruments = stockMasterService.stockMaster.filter(
+      (stock) =>
+        searchFilters.instrumentTypes.includes(stock.instrumenttype) &&
+        searchFilters.exchanges.includes(stock.exch_seg),
+    )
+
+    // Apply instrument filter (e.g., NIFTY, BANKNIFTY)
+    if (instrument) {
+      optionInstruments = optionInstruments.filter((stock) =>
+        stock.symbol.toUpperCase().includes(instrument.toUpperCase()),
+      )
+    }
+
+    // Apply script filter (specific underlying)
+    if (script) {
+      optionInstruments = optionInstruments.filter((stock) =>
+        stock.symbol.toUpperCase().startsWith(script.toUpperCase()),
+      )
+    }
+
+    // Apply expiry filter
+    if (expiry) {
+      optionInstruments = optionInstruments.filter((stock) => stock.expiry && stock.expiry.includes(expiry))
+    }
+
+    // Apply strike filter
+    if (strike) {
+      const strikeNum = Number.parseFloat(strike)
+      optionInstruments = optionInstruments.filter(
+        (stock) => stock.strike && Math.abs(Number.parseFloat(stock.strike) - strikeNum) < 0.01,
+      )
+    }
+
+    // Limit results
+    optionInstruments = optionInstruments.slice(0, Number.parseInt(limit))
+
+    // Get live prices for these instruments
+    const tokens = optionInstruments.map((stock) => stock.token)
+    let liveData = []
+
+    if (tokens.length > 0) {
+      try {
+        const exchangeTokens = {
+          NFO: tokens.filter((token) => {
+            const stock = stockMasterService.getStockByToken(token)
+            return stock && stock.exch_seg === "NFO"
+          }),
+          BFO: tokens.filter((token) => {
+            const stock = stockMasterService.getStockByToken(token)
+            return stock && stock.exch_seg === "BFO"
+          }),
+        }
+
+        const result = await marketDataService.fetchMarketData(authToken, "FULL", exchangeTokens)
+        liveData = result.data || []
+      } catch (priceError) {
+        console.error("❌ Error fetching live prices:", priceError.message)
+      }
+    }
+
+    // Combine instrument data with live prices
+    const enrichedData = optionInstruments.map((instrument) => {
+      const livePrice = liveData.find((price) => price.token === instrument.token)
+
+      // Extract option details from symbol
+      const optionType = instrument.symbol.includes("CE") ? "CE" : "PE"
+      const underlyingMatch = instrument.symbol.match(/^([A-Z]+)/)
+      const underlying = underlyingMatch ? underlyingMatch[1] : "UNKNOWN"
+
+      return {
+        token: instrument.token,
+        symbol: instrument.symbol,
+        name: instrument.name || instrument.symbol,
+        segment: instrument.instrumenttype === "OPTIDX" ? "Index" : "Equity",
+        instrument: underlying,
+        script: underlying,
+        expiry: instrument.expiry,
+        strike: Number.parseFloat(instrument.strike || 0),
+        optionType: optionType,
+        exchange: instrument.exch_seg,
+        lotSize: instrument.lotsize || 1,
+
+        // Live price data
+        ltp: livePrice?.ltp || 0,
+        change: livePrice?.change || 0,
+        changePercent: livePrice?.changePercent || 0,
+        volume: livePrice?.volume || 0,
+        openInterest: 0, // Would need separate API call
+        bid: 0,
+        ask: 0,
+
+        // Additional data
+        timestamp: new Date().toISOString(),
+        isLive: !!livePrice,
+      }
+    })
+
+    res.json({
+      success: true,
+      data: enrichedData,
+      filters: { segment, instrument, script, expiry, strike },
+      count: enrichedData.length,
+      hasLiveData: liveData.length > 0,
+      timestamp: new Date().toISOString(),
+      source: "live_options_api",
+    })
+  } catch (error) {
+    console.error("❌ Error fetching live options data:", error)
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      timestamp: new Date().toISOString(),
+    })
+  }
+}
+
+// Add Call Position
+const addCallPosition = async (req, res) => {
+  try {
+    const { segment, instrument, script, expiry, strike, quantity, orderType } = req.body
+
+    console.log(`📊 Adding call position:`, req.body)
+
+    // Validate required fields
+    if (!segment || !instrument || !script || !expiry || !strike) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: segment, instrument, script, expiry, strike",
+      })
+    }
+
+    if (!authService.isAuthenticated()) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required to add call position",
+        loginEndpoint: "/api/auth/login",
+      })
+    }
+
+    const stockMasterService = require("../services/stockMasterService")
+
+    // Find the specific option contract
+    const optionContract = stockMasterService.stockMaster.find(
+      (stock) =>
+        stock.symbol.toUpperCase().startsWith(script.toUpperCase()) &&
+        stock.expiry === expiry &&
+        Number.parseFloat(stock.strike) === Number.parseFloat(strike) &&
+        stock.symbol.includes("CE"), // Call option
+    )
+
+    if (!optionContract) {
+      return res.status(404).json({
+        success: false,
+        message: `Call option not found for ${script} ${expiry} ${strike} CE`,
+      })
+    }
+
+    // Get current live price
+    const authToken = authService.getAuthToken()
+    let currentPrice = 0
+
+    try {
+      const exchangeTokens = {
+        [optionContract.exch_seg]: [optionContract.token],
+      }
+      const result = await marketDataService.fetchMarketData(authToken, "FULL", exchangeTokens)
+      const priceData = result.data?.[0]
+      currentPrice = priceData?.ltp || 0
+    } catch (priceError) {
+      console.error("❌ Error fetching current price:", priceError.message)
+    }
+
+    // Create position record (in a real app, this would be saved to database)
+    const position = {
+      id: Date.now().toString(),
+      token: optionContract.token,
+      symbol: optionContract.symbol,
+      segment: segment,
+      instrument: instrument,
+      script: script,
+      expiry: expiry,
+      strike: Number.parseFloat(strike),
+      optionType: "CE",
+      quantity: Number.parseInt(quantity) || 1,
+      orderType: orderType || "BUY",
+      entryPrice: currentPrice,
+      currentPrice: currentPrice,
+      pnl: 0,
+      lotSize: optionContract.lotsize || 1,
+      exchange: optionContract.exch_seg,
+      timestamp: new Date().toISOString(),
+      status: "ACTIVE",
+    }
+
+    res.json({
+      success: true,
+      message: "Call position added successfully",
+      position: position,
+      marketData: {
+        currentPrice: currentPrice,
+        symbol: optionContract.symbol,
+        lotSize: optionContract.lotsize,
+      },
+      timestamp: new Date().toISOString(),
+    })
+  } catch (error) {
+    console.error("❌ Error adding call position:", error)
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      timestamp: new Date().toISOString(),
+    })
+  }
+}
+
+// Get instruments by segment
+const getInstrumentsBySegment = async (req, res) => {
+  try {
+    const { segment } = req.params
+    const stockMasterService = require("../services/stockMasterService")
+
+    let instrumentTypes = []
+    if (segment.toLowerCase() === "equity") {
+      instrumentTypes = ["OPTSTK"]
+    } else if (segment.toLowerCase() === "index") {
+      instrumentTypes = ["OPTIDX"]
+    } else {
+      instrumentTypes = ["OPTIDX", "OPTSTK"]
+    }
+
+    // Get unique underlying instruments
+    const instruments = new Set()
+    stockMasterService.stockMaster
+      .filter((stock) => instrumentTypes.includes(stock.instrumenttype))
+      .forEach((stock) => {
+        const underlyingMatch = stock.symbol.match(/^([A-Z]+)/)
+        if (underlyingMatch) {
+          instruments.add(underlyingMatch[1])
+        }
+      })
+
+    const instrumentList = Array.from(instruments)
+      .sort()
+      .map((instrument) => ({
+        value: instrument,
+        label: instrument,
+        segment: segment,
+      }))
+
+    res.json({
+      success: true,
+      data: instrumentList,
+      segment: segment,
+      count: instrumentList.length,
+      timestamp: new Date().toISOString(),
+    })
+  } catch (error) {
+    console.error("❌ Error fetching instruments:", error)
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}
+
+// Get scripts by instrument
+const getScriptsByInstrument = async (req, res) => {
+  try {
+    const { instrument } = req.params
+    const stockMasterService = require("../services/stockMasterService")
+
+    // For most cases, script is same as instrument
+    // But we can return variations if they exist
+    const scripts = new Set()
+    stockMasterService.stockMaster
+      .filter(
+        (stock) =>
+          (stock.instrumenttype === "OPTIDX" || stock.instrumenttype === "OPTSTK") &&
+          stock.symbol.toUpperCase().startsWith(instrument.toUpperCase()),
+      )
+      .forEach((stock) => {
+        const underlyingMatch = stock.symbol.match(/^([A-Z]+)/)
+        if (underlyingMatch) {
+          scripts.add(underlyingMatch[1])
+        }
+      })
+
+    const scriptList = Array.from(scripts)
+      .sort()
+      .map((script) => ({
+        value: script,
+        label: script,
+        instrument: instrument,
+      }))
+
+    res.json({
+      success: true,
+      data: scriptList,
+      instrument: instrument,
+      count: scriptList.length,
+      timestamp: new Date().toISOString(),
+    })
+  } catch (error) {
+    console.error("❌ Error fetching scripts:", error)
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}
+
+// Get expiries by script
+const getExpiriesByScript = async (req, res) => {
+  try {
+    const { script } = req.params
+    const stockMasterService = require("../services/stockMasterService")
+
+    const expiries = new Set()
+    stockMasterService.stockMaster
+      .filter(
+        (stock) =>
+          (stock.instrumenttype === "OPTIDX" || stock.instrumenttype === "OPTSTK") &&
+          stock.symbol.toUpperCase().startsWith(script.toUpperCase()) &&
+          stock.expiry,
+      )
+      .forEach((stock) => {
+        expiries.add(stock.expiry)
+      })
+
+    const expiryList = Array.from(expiries)
+      .sort((a, b) => new Date(a) - new Date(b))
+      .map((expiry) => ({
+        value: expiry,
+        label: expiry,
+        script: script,
+      }))
+
+    res.json({
+      success: true,
+      data: expiryList,
+      script: script,
+      count: expiryList.length,
+      timestamp: new Date().toISOString(),
+    })
+  } catch (error) {
+    console.error("❌ Error fetching expiries:", error)
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}
+
+// Get strikes by script and expiry
+const getStrikesByScriptAndExpiry = async (req, res) => {
+  try {
+    const { script, expiry } = req.params
+    const stockMasterService = require("../services/stockMasterService")
+
+    const strikes = new Set()
+    stockMasterService.stockMaster
+      .filter(
+        (stock) =>
+          (stock.instrumenttype === "OPTIDX" || stock.instrumenttype === "OPTSTK") &&
+          stock.symbol.toUpperCase().startsWith(script.toUpperCase()) &&
+          stock.expiry === expiry &&
+          stock.strike,
+      )
+      .forEach((stock) => {
+        strikes.add(Number.parseFloat(stock.strike))
+      })
+
+    const strikeList = Array.from(strikes)
+      .sort((a, b) => a - b)
+      .map((strike) => ({
+        value: strike,
+        label: strike.toString(),
+        script: script,
+        expiry: expiry,
+      }))
+
+    res.json({
+      success: true,
+      data: strikeList,
+      script: script,
+      expiry: expiry,
+      count: strikeList.length,
+      timestamp: new Date().toISOString(),
+    })
+  } catch (error) {
+    console.error("❌ Error fetching strikes:", error)
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}
+
 module.exports = {
   getMarketData,
   getLatestPrices,
@@ -1057,4 +1497,10 @@ module.exports = {
   getStockDetails,
   getComprehensiveOptionChain,
   searchOptionsByStrikeAndExpiry, // NEW
+  getLiveOptionsData,
+  addCallPosition,
+  getInstrumentsBySegment,
+  getScriptsByInstrument,
+  getExpiriesByScript,
+  getStrikesByScriptAndExpiry,
 }

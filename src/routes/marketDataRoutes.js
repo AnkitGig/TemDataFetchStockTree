@@ -40,4 +40,12 @@ router.get("/options/:underlying/:expiry", marketDataController.getOptionsByExpi
 // Specific strike and expiry (with flexible matching)
 router.get("/options/:underlying/:expiry/:strike", marketDataController.getOptionByStrike)
 
+// NEW: Live Market Data API for Add Call functionality
+router.get("/live/options", marketDataController.getLiveOptionsData)
+router.post("/live/add-call", marketDataController.addCallPosition)
+router.get("/live/instruments/:segment", marketDataController.getInstrumentsBySegment)
+router.get("/live/scripts/:instrument", marketDataController.getScriptsByInstrument)
+router.get("/live/expiries/:script", marketDataController.getExpiriesByScript)
+router.get("/live/strikes/:script/:expiry", marketDataController.getStrikesByScriptAndExpiry)
+
 module.exports = router
