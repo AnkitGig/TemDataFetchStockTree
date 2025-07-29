@@ -347,13 +347,33 @@ class StockMasterService {
     try {
       console.log(`📊 Getting comprehensive stock details for ${symbol}`)
 
-      // First, find the stock in our database
-      let stockInfo = this.getStockBySymbol(symbol)
+      // Clean the symbol (remove extra spaces)
+      const cleanSymbol = symbol.trim().toUpperCase()
+      console.log(`📊 Cleaned symbol: "${cleanSymbol}"`)
 
-      // If not found in stock master, try static config
+      // First, find the stock in our database
+      let stockInfo = this.getStockBySymbol(cleanSymbol)
+      console.log(`📊 Stock found in master: ${!!stockInfo}`)
+
+      // If not found, try partial matching
       if (!stockInfo) {
+        console.log(`📊 Trying partial search for ${cleanSymbol}`)
+        const partialMatches = this.stockMaster.filter(
+          (stock) => stock.symbol && stock.symbol.toUpperCase().includes(cleanSymbol),
+        )
+        console.log(`📊 Partial matches found: ${partialMatches.length}`)
+
+        if (partialMatches.length > 0) {
+          stockInfo = partialMatches[0] // Take first match
+          console.log(`📊 Using partial match: ${stockInfo.symbol}`)
+        }
+      }
+
+      // If still not found in stock master, try static config
+      if (!stockInfo) {
+        console.log(`📊 Trying static config search for ${cleanSymbol}`)
         const { searchStocks } = require("../config/stockConfig")
-        const staticResults = searchStocks(symbol)
+        const staticResults = searchStocks(cleanSymbol)
 
         if (staticResults.length > 0) {
           const staticStock = staticResults[0]
@@ -365,15 +385,34 @@ class StockMasterService {
             instrumenttype: "EQ",
             lotsize: 1,
           }
-          console.log(`📊 Found ${symbol} in static config`)
+          console.log(`📊 Found ${cleanSymbol} in static config`)
         }
       }
 
+      // If still not found, provide helpful suggestions
       if (!stockInfo) {
-        throw new Error(`Stock ${symbol} not found`)
+        console.log(`📊 Stock ${cleanSymbol} not found, searching for similar stocks`)
+
+        // Search for similar stocks
+        const similarStocks = this.stockMaster
+          .filter((stock) => {
+            if (!stock.symbol) return false
+            const stockSymbol = stock.symbol.toUpperCase()
+            return (
+              stockSymbol.includes(cleanSymbol.substring(0, 4)) || cleanSymbol.includes(stockSymbol.substring(0, 4))
+            )
+          })
+          .slice(0, 10)
+          .map((stock) => ({
+            symbol: stock.symbol,
+            name: stock.name,
+            exchange: stock.exch_seg,
+          }))
+
+        throw new Error(`Stock ${cleanSymbol} not found. Similar stocks: ${JSON.stringify(similarStocks)}`)
       }
 
-      // Basic stock information
+      // Rest of the method remains the same...
       const stockDetails = {
         basic: {
           token: stockInfo.token,

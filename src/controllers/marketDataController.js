@@ -555,7 +555,7 @@ const getOptionByStrike = async (req, res) => {
         theta: callOption.theta || 0,
         vega: callOption.vega || 0,
         lotSize: callOption.lotSize || 1,
-        expiry: putOption.expiry,
+        expiry: callOption.expiry,
       }
     }
 
@@ -849,6 +849,29 @@ const getStockDetails = async (req, res) => {
     }
   } catch (error) {
     console.error("❌ Error getting stock details:", error)
+
+    // Check if it's a "not found" error and provide suggestions
+    if (error.message.includes("not found")) {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+        symbol: req.params.symbol,
+        suggestions: {
+          searchEndpoint: `/api/market-data/search?q=${req.params.symbol}`,
+          message: "Try using the search endpoint to find similar stocks",
+          example: `GET /api/market-data/search?q=${req.params.symbol.substring(0, 4)}`,
+        },
+        timestamp: new Date().toISOString(),
+        debugInfo: {
+          authTokenAvailable: !!authService.getAuthToken(),
+          isAuthenticated: authService.isAuthenticated(),
+          errorType: error.name,
+          errorMessage: error.message,
+        },
+      })
+    }
+
+    // For other errors, return the existing response
     res.status(500).json({
       success: false,
       message: error.message,
@@ -1574,6 +1597,58 @@ const getStrikesByScriptAndExpiry = async (req, res) => {
   }
 }
 
+// Add this new method to the controller
+const suggestStockSymbols = async (req, res) => {
+  try {
+    const { partialSymbol } = req.params
+    const { limit = 20 } = req.query
+
+    console.log(`🔍 Suggesting stock symbols for: ${partialSymbol}`)
+
+    const stockMasterService = require("../services/stockMasterService")
+    const cleanSymbol = partialSymbol.trim().toUpperCase()
+
+    // Find stocks that contain the partial symbol
+    const suggestions = stockMasterService.stockMaster
+      .filter((stock) => {
+        if (!stock.symbol || !stock.name) return false
+        const symbolMatch = stock.symbol.toUpperCase().includes(cleanSymbol)
+        const nameMatch = stock.name.toUpperCase().includes(cleanSymbol)
+        return symbolMatch || nameMatch
+      })
+      .filter((stock) => stock.instrumenttype === "EQ") // Only equity stocks
+      .slice(0, Number.parseInt(limit))
+      .map((stock) => ({
+        symbol: stock.symbol,
+        name: stock.name,
+        exchange: stock.exch_seg,
+        token: stock.token,
+        matchType: stock.symbol.toUpperCase().includes(cleanSymbol) ? "symbol" : "name",
+      }))
+
+    res.json({
+      success: true,
+      query: partialSymbol,
+      suggestions: suggestions,
+      count: suggestions.length,
+      message:
+        suggestions.length > 0
+          ? `Found ${suggestions.length} stocks matching "${partialSymbol}"`
+          : `No stocks found matching "${partialSymbol}"`,
+      timestamp: new Date().toISOString(),
+    })
+  } catch (error) {
+    console.error("❌ Error suggesting stock symbols:", error)
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      query: req.params.partialSymbol,
+      timestamp: new Date().toISOString(),
+    })
+  }
+}
+
+// Don't forget to add this to the module.exports at the bottom
 module.exports = {
   getMarketData,
   getLatestPrices,
@@ -1585,15 +1660,16 @@ module.exports = {
   fetchOptionChainData,
   getOptionsByExpiry,
   getOptionByStrike,
-  getOptionsByStrike, // NEW
+  getOptionsByStrike,
   getAvailableUnderlyings,
   getStockDetails,
   getComprehensiveOptionChain,
-  searchOptionsByStrikeAndExpiry, // NEW
+  searchOptionsByStrikeAndExpiry,
   getLiveOptionsData,
   addCallPosition,
   getInstrumentsBySegment,
   getScriptsByInstrument,
   getExpiriesByScript,
   getStrikesByScriptAndExpiry,
+  suggestStockSymbols, // Add this new method
 }

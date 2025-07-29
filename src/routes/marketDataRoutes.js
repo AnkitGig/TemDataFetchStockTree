@@ -13,6 +13,7 @@ router.get("/stats", marketDataController.getMarketStats)
 router.get("/search", marketDataController.searchStocks)
 
 // Stock Details Routes
+router.get("/stocks/suggest/:partialSymbol", marketDataController.suggestStockSymbols) // NEW: Stock symbol suggestions
 router.get("/stock/:symbol/details", marketDataController.getStockDetails)
 router.get("/stocks/:symbol", marketDataController.getStockDetails)
 
