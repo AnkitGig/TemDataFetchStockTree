@@ -48,7 +48,11 @@ const getOptionUnderlyings = () => {
 }
 
 const getOptionUnderlying = (symbol) => {
-  return STOCK_CONFIG.OPTION_UNDERLYINGS[symbol.toUpperCase()] || null
+  const underlying = STOCK_CONFIG.OPTION_UNDERLYINGS[symbol.toUpperCase()]
+  if (!underlying) {
+    console.warn(`⚠️ Option underlying configuration not found for symbol: ${symbol.toUpperCase()}`)
+  }
+  return underlying || null
 }
 
 const getStockByToken = (token) => {

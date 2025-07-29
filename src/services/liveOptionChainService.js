@@ -253,6 +253,7 @@ class LiveOptionChainService {
       this.formatExpiry(new Date(currentDate.getTime() + 7 * 24 * 60 * 60 * 1000)), // Next week
       this.formatExpiry(new Date(currentDate.getTime() + 14 * 24 * 60 * 60 * 1000)), // 2 weeks
       this.formatExpiry(new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000)), // 1 month
+      this.formatExpiry(new Date(currentDate.getTime() + 60 * 24 * 60 * 60 * 1000)), // 2 months
     ]
 
     // Generate strikes based on underlying
@@ -261,15 +262,15 @@ class LiveOptionChainService {
 
     switch (underlying.toUpperCase()) {
       case "NIFTY":
-        basePrice = 24000
+        basePrice = 24800 // Updated base price for NIFTY
         strikeInterval = 50
         break
       case "BANKNIFTY":
-        basePrice = 51000
-        strikeInterval = 100
+        basePrice = 56000 // Updated base price for BANKNIFTY
+        strikeInterval = 200
         break
       case "FINNIFTY":
-        basePrice = 22000
+        basePrice = 26667
         strikeInterval = 50
         break
       case "RELIANCE":
@@ -279,7 +280,7 @@ class LiveOptionChainService {
       case "TCS":
         basePrice = 4000
         strikeInterval = 50
-        break
+        break  
       default:
         basePrice = 1000
         strikeInterval = 50
@@ -287,7 +288,8 @@ class LiveOptionChainService {
 
     // Generate strikes around base price
     const strikes = []
-    for (let i = -10; i <= 10; i++) {
+    for (let i = -20; i <= 20; i++) {
+      // Increased range to +/- 20 intervals
       strikes.push(basePrice + i * strikeInterval)
     }
 
@@ -421,7 +423,7 @@ class LiveOptionChainService {
       const changePercentValue = Number.parseFloat((optionData.percentChange || optionData.pChange || 0).toFixed(2))
       const openValue = Number.parseFloat((optionData.open || 0).toFixed(2))
       const highValue = Number.parseFloat((optionData.high || 0).toFixed(2))
-      const lowValue = Number.parseFloat((optionData.low || 0).toFixed(2))
+      const lowValue = Number.parseFloat((optionData.low || 0).toFixed(2)).toFixed(2)
       const closeValue = Number.parseFloat((optionData.close || optionData.prevClose || 0).toFixed(2))
       const impliedVolatilityValue = Number.parseFloat((optionData.impliedVolatility || optionData.iv || 0).toFixed(2))
 

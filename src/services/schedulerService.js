@@ -89,7 +89,7 @@ class SchedulerService {
 
       // Fetch option chain data for major underlyings
       const liveOptionChainService = require("./liveOptionChainService")
-      const majorUnderlyings = ["NIFTY", "BANKNIFTY", "FINNIFTY"]
+      const majorUnderlyings = ["NIFTY", "BANKNIFTY", "FINNIFTY","SENEX"]
 
       for (const underlying of majorUnderlyings) {
         try {

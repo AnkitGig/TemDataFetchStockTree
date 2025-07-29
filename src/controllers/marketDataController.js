@@ -543,19 +543,18 @@ const getOptionByStrike = async (req, res) => {
         price: putOption.price || putOption.ltp || 0,
         openInterest: putOption.openInterest || 0,
         changeInOI: putOption.changeInOI || 0,
-        volume: putOption.volume || 0,
-        change: callOption.change || 0,
+        volume: callOption.change || 0,
         changePercent: putOption.changePercent || 0,
         high: putOption.high || 0,
         low: putOption.low || 0,
         open: putOption.open || 0,
         close: putOption.close || 0,
         impliedVolatility: putOption.impliedVolatility || 0,
-        delta: putOption.delta || 0,
-        gamma: putOption.gamma || 0,
-        theta: putOption.theta || 0,
-        vega: putOption.vega || 0,
-        lotSize: putOption.lotSize || 1,
+        delta: callOption.delta || 0,
+        gamma: callOption.gamma || 0,
+        theta: callOption.theta || 0,
+        vega: callOption.vega || 0,
+        lotSize: callOption.lotSize || 1,
         expiry: putOption.expiry,
       }
     }
@@ -695,12 +694,105 @@ const getStockDetails = async (req, res) => {
         }
       }
 
+      // NEW: If stock has options, fetch and include the comprehensive option chain
+      if (stockDetails.derivatives.hasOptions) {
+        try {
+          console.log(`📊 Fetching comprehensive option chain for ${symbol} within stock details.`)
+          const optionChainResult = await optionChainService.fetchOptionChainData(freshAuthToken, symbol)
+
+          if (optionChainResult.success) {
+            const allOptions = await optionChainService.getAllOptionsFromCache(symbol)
+
+            if (allOptions && allOptions.length > 0) {
+              // Group options by strike and expiry
+              const optionChainByStrike = {}
+              allOptions.forEach((option) => {
+                const key = `${option.expiry}_${option.strike}`
+                if (!optionChainByStrike[key]) {
+                  optionChainByStrike[key] = {
+                    strike: option.strike,
+                    expiry: option.expiry,
+                    underlying: option.underlying,
+                    CE: null,
+                    PE: null,
+                  }
+                }
+                const optionData = {
+                  // Re-create optionData to ensure all fields are present and formatted
+                  token: option.token,
+                  symbol: option.symbol,
+                  underlying: option.underlying,
+                  strike: option.strike,
+                  optionType: option.optionType,
+                  expiry: option.expiry,
+                  ltp: option.ltp || 0,
+                  price: option.price || option.ltp || 0,
+                  change: option.change || 0,
+                  changePercent: option.changePercent || 0,
+                  open: option.open || 0,
+                  high: option.high || 0,
+                  low: option.low || 0,
+                  close: option.close || 0,
+                  volume: option.volume || 0,
+                  openInterest: option.openInterest || 0,
+                  changeInOI: option.changeInOI || 0,
+                  impliedVolatility: option.impliedVolatility || 0,
+                  delta: option.delta || 0,
+                  gamma: option.gamma || 0,
+                  theta: option.theta || 0,
+                  vega: option.vega || 0,
+                  lotSize: option.lotSize || 1,
+                  timestamp: option.timestamp || new Date().toISOString(),
+                }
+                if (option.optionType === "CE") {
+                  optionChainByStrike[key].CE = optionData
+                } else if (option.optionType === "PE") {
+                  optionChainByStrike[key].PE = optionData
+                }
+              })
+
+              // Convert to array and sort by expiry then strike
+              const sortedOptionChain = Object.values(optionChainByStrike).sort((a, b) => {
+                if (a.expiry !== b.expiry) {
+                  return a.expiry.localeCompare(b.expiry)
+                }
+                return a.strike - b.strike
+              })
+
+              const optionChainSummary = {
+                totalStrikes: sortedOptionChain.length,
+                totalCallOptions: sortedOptionChain.filter((item) => item.CE).length,
+                totalPutOptions: sortedOptionChain.filter((item) => item.PE).length,
+                availableExpiries: [...new Set(allOptions.map((item) => item.expiry))].sort(),
+                strikeRange:
+                  sortedOptionChain.length > 0
+                    ? {
+                        min: Math.min(...sortedOptionChain.map((item) => item.strike)),
+                        max: Math.max(...sortedOptionChain.map((item) => item.strike)),
+                      }
+                    : { min: 0, max: 0 },
+              }
+
+              stockDetails.optionChain = sortedOptionChain
+              stockDetails.optionChainSummary = optionChainSummary
+              console.log(`✅ Added option chain data for ${symbol} (${sortedOptionChain.length} strikes)`)
+            } else {
+              console.log(`⚠️ No option data found for ${symbol} after fetch.`)
+            }
+          } else {
+            console.error(`❌ Failed to fetch option chain data for ${symbol}: ${optionChainResult.message}`)
+          }
+        } catch (optionError) {
+          console.error(`❌ Error fetching option chain for ${symbol}:`, optionError.message)
+        }
+      }
+
       res.json({
         success: true,
-        data: stockDetails,
+        data: stockDetails, // Now includes optionChain and optionChainSummary
         symbol: symbol.toUpperCase(),
         hasLiveData: !!freshAuthToken,
-        hasOptionChain: stockDetails.derivatives.hasOptions,
+        hasOptionChain: stockDetails.derivatives.hasOptions, // This should reflect if options are available
         currentPrice: currentPrice !== null ? Number.parseFloat(currentPrice.toFixed(2)) : null,
         high52Week: high52Week !== null ? Number.parseFloat(high52Week.toFixed(2)) : null,
         low52Week: low52Week !== null ? Number.parseFloat(low52Week.toFixed(2)) : null,
@@ -713,6 +805,7 @@ const getStockDetails = async (req, res) => {
           stockMasterFound: !!stockDetails.basic,
           priceDataFetched: !!stockDetails.priceRanges,
           marketDataAttempted: true,
+          optionChainIncluded: !!stockDetails.optionChain, // New debug info
         },
       })
     } catch (serviceError) {

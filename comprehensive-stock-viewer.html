@@ -1,1174 +1,1196 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Comprehensive Stock Market Viewer</title>
-  <style>
-      * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-      }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comprehensive Stock Market Viewer</title>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
 
-      body {
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          min-height: 100vh;
-          padding: 20px;
-      }
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+    }
 
-      .container {
-          max-width: 1400px;
-          margin: 0 auto;
-          background: white;
-          border-radius: 15px;
-          box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-          overflow: hidden;
-      }
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
 
-      .header {
-          background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-          color: white;
-          padding: 30px;
-          text-align: center;
-      }
+    .header {
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+    }
 
-      .header h1 {
-          font-size: 2.5em;
-          margin-bottom: 10px;
-      }
+    .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+    }
 
-      .header p {
-          opacity: 0.9;
-          font-size: 1.1em;
-      }
+    .header p {
+        opacity: 0.9;
+        font-size: 1.1em;
+    }
 
-      .controls {
-          padding: 30px;
-          background: #f8f9fa;
-          border-bottom: 1px solid #e9ecef;
-      }
+    .controls {
+        padding: 30px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+    }
 
-      .control-group {
-          display: flex;
-          gap: 20px;
-          align-items: center;
-          flex-wrap: wrap;
-          margin-bottom: 20px;
-      }
+    .control-group {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
 
-      .control-group input, .control-group select, .control-group button {
-          padding: 12px 20px;
-          border: 2px solid #ddd;
-          border-radius: 8px;
-          font-size: 16px;
-      }
+    .control-group input, .control-group select, .control-group button {
+        padding: 12px 20px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 16px;
+    }
 
-      .control-group button {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          border: none;
-          cursor: pointer;
-          transition: transform 0.2s;
-      }
+    .control-group button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
 
-      .control-group button:hover {
-          transform: translateY(-2px);
-      }
+    .control-group button:hover {
+        transform: translateY(-2px);
+    }
 
-      .tabs {
-          display: flex;
-          background: #f8f9fa;
-          border-bottom: 1px solid #ddd;
-      }
+    .tabs {
+        display: flex;
+        background: #f8f9fa;
+        border-bottom: 1px solid #ddd;
+    }
 
-      .tab {
-          padding: 15px 30px;
-          cursor: pointer;
-          border-bottom: 3px solid transparent;
-          transition: all 0.3s;
-      }
+    .tab {
+        padding: 15px 30px;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s;
+    }
 
-      .tab.active {
-          background: white;
-          border-bottom-color: #667eea;
-          color: #667eea;
-      }
+    .tab.active {
+        background: white;
+        border-bottom-color: #667eea;
+        color: #667eea;
+    }
 
-      .content {
-          padding: 30px;
-          min-height: 600px;
-      }
+    .content {
+        padding: 30px;
+        min-height: 600px;
+    }
 
-      .stock-card {
-          background: white;
-          border: 1px solid #e9ecef;
-          border-radius: 10px;
-          padding: 20px;
-          margin-bottom: 20px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-          transition: transform 0.2s;
-          cursor: pointer;
-      }
+    .stock-card {
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        transition: transform 0.2s;
+        cursor: pointer;
+    }
 
-      .stock-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-      }
+    .stock-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
 
-      .stock-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 15px;
-      }
+    .stock-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
 
-      .stock-symbol {
-          font-size: 1.5em;
-          font-weight: bold;
-          color: #2c3e50;
-      }
+    .stock-symbol {
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #2c3e50;
+    }
 
-      .stock-name {
-          color: #7f8c8d;
-          font-size: 0.9em;
-      }
+    .stock-name {
+        color: #7f8c8d;
+        font-size: 0.9em;
+    }
 
-      .stock-price {
-          text-align: right;
-      }
+    .stock-price {
+        text-align: right;
+    }
 
-      .ltp {
-          font-size: 1.8em;
-          font-weight: bold;
-          color: #2c3e50;
-      }
+    .ltp {
+        font-size: 1.8em;
+        font-weight: bold;
+        color: #2c3e50;
+    }
 
-      .change {
-          font-size: 1.1em;
-          font-weight: bold;
-      }
+    .change {
+        font-size: 1.1em;
+        font-weight: bold;
+    }
 
-      .change.positive {
-          color: #27ae60;
-      }
+    .change.positive {
+        color: #27ae60;
+    }
 
-      .change.negative {
-          color: #e74c3c;
-      }
+    .change.negative {
+        color: #e74c3c;
+    }
 
-      .price-ranges {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 15px;
-          margin: 20px 0;
-      }
+    .price-ranges {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+    }
 
-      .price-range {
-          background: #f8f9fa;
-          padding: 15px;
-          border-radius: 8px;
-          border-left: 4px solid #667eea;
-      }
+    .price-range {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+    }
 
-      .price-range h4 {
-          color: #2c3e50;
-          margin-bottom: 10px;
-      }
+    .price-range h4 {
+        color: #2c3e50;
+        margin-bottom: 10px;
+    }
 
-      .range-values {
-          display: flex;
-          justify-content: space-between;
-      }
+    .range-values {
+        display: flex;
+        justify-content: space-between;
+    }
 
-      .range-value {
-          text-align: center;
-      }
+    .range-value {
+        text-align: center;
+    }
 
-      .range-label {
-          font-size: 0.8em;
-          color: #7f8c8d;
-          margin-bottom: 5px;
-      }
+    .range-label {
+        font-size: 0.8em;
+        color: #7f8c8d;
+        margin-bottom: 5px;
+    }
 
-      .range-price {
-          font-weight: bold;
-          color: #2c3e50;
-      }
+    .range-price {
+        font-weight: bold;
+        color: #2c3e50;
+    }
 
-      .derivatives-info {
-          background: #e8f4fd;
-          padding: 15px;
-          border-radius: 8px;
-          margin-top: 15px;
-      }
+    .derivatives-info {
+        background: #e8f4fd;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 15px;
+    }
 
-      .derivatives-badges {
-          display: flex;
-          gap: 10px;
-          margin-bottom: 10px;
-      }
+    .derivatives-badges {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
 
-      .badge {
-          padding: 5px 12px;
-          border-radius: 20px;
-          font-size: 0.8em;
-          font-weight: bold;
-      }
+    .badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.8em;
+        font-weight: bold;
+    }
 
-      .badge.futures {
-          background: #3498db;
-          color: white;
-      }
+    .badge.futures {
+        background: #3498db;
+        color: white;
+    }
 
-      .badge.options {
-          background: #e67e22;
-          color: white;
-      }
+    .badge.options {
+        background: #e67e22;
+        color: white;
+    }
 
-      .option-chain {
-          margin-top: 20px;
-      }
+    .option-chain {
+        margin-top: 20px;
+    }
 
-      .option-table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 15px;
-      }
+    .option-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
 
-      .option-table th,
-      .option-table td {
-          padding: 12px;
-          text-align: center;
-          border: 1px solid #ddd;
-      }
+    .option-table th,
+    .option-table td {
+        padding: 12px;
+        text-align: center;
+        border: 1px solid #ddd;
+    }
 
-      .option-table th {
-          background: #f8f9fa;
-          font-weight: bold;
-          color: #2c3e50;
-      }
+    .option-table th {
+        background: #f8f9fa;
+        font-weight: bold;
+        color: #2c3e50;
+    }
 
-      .option-table .call {
-          background: #d5f4e6;
-      }
+    .option-table .call {
+        background: #d5f4e6;
+    }
 
-      .option-table .put {
-          background: #ffeaa7;
-      }
+    .option-table .put {
+        background: #ffeaa7;
+    }
 
-      .loading {
-          text-align: center;
-          padding: 50px;
-          color: #7f8c8d;
-      }
+    .loading {
+        text-align: center;
+        padding: 50px;
+        color: #7f8c8d;
+    }
 
-      .error {
-          background: #fee;
-          color: #c33;
-          padding: 15px;
-          border-radius: 8px;
-          margin: 20px 0;
-      }
+    .error {
+        background: #fee;
+        color: #c33;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+    }
 
-      .success {
-          background: #efe;
-          color: #363;
-          padding: 15px;
-          border-radius: 8px;
-          margin: 20px 0;
-      }
+    .success {
+        background: #efe;
+        color: #363;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px 0;
+    }
 
-      .search-results {
-          max-height: 400px;
-          overflow-y: auto;
-      }
+    .search-results {
+        max-height: 400px;
+        overflow-y: auto;
+    }
 
-      .expiry-selector {
-          margin: 15px 0;
-      }
+    .expiry-selector {
+        margin: 15px 0;
+    }
 
-      .expiry-selector select {
-          padding: 8px 15px;
-          border: 1px solid #ddd;
-          border-radius: 5px;
-      }
+    .expiry-selector select {
+        padding: 8px 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
 
-      .status-indicator {
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          padding: 10px 20px;
-          border-radius: 5px;
-          color: white;
-          font-weight: bold;
-          z-index: 1000;
-      }
+    .status-indicator {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 10px 20px;
+        border-radius: 5px;
+        color: white;
+        font-weight: bold;
+        z-index: 1000;
+    }
 
-      .status-indicator.online {
-          background: #27ae60;
-      }
+    .status-indicator.online {
+        background: #27ae60;
+    }
 
-      .status-indicator.offline {
-          background: #e74c3c;
-      }
+    .status-indicator.offline {
+        background: #e74c3c;
+    }
 
-      @media (max-width: 768px) {
-          .control-group {
-              flex-direction: column;
-              align-items: stretch;
-          }
-          
-          .price-ranges {
-              grid-template-columns: 1fr;
-          }
-          
-          .stock-header {
-              flex-direction: column;
-              align-items: flex-start;
-              gap: 10px;
-          }
-      }
+    @media (max-width: 768px) {
+        .control-group {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .price-ranges {
+            grid-template-columns: 1fr;
+        }
+        
+        .stock-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+    }
 
-      .stock-price-main {
-          text-align: right;
-          margin-left: auto; /* Pushes it to the right */
-      }
+    .stock-price-main {
+        text-align: right;
+        margin-left: auto; /* Pushes it to the right */
+    }
 
-      .stock-price-main .ltp {
-          font-size: 2.5em; /* Larger font for main price */
-          font-weight: bold;
-          color: #2c3e50;
-          line-height: 1;
-      }
+    .stock-price-main .ltp {
+        font-size: 2.5em; /* Larger font for main price */
+        font-weight: bold;
+        color: #2c3e50;
+        line-height: 1;
+    }
 
-      .stock-price-main .currency {
-          font-size: 0.6em;
-          vertical-align: super;
-          opacity: 0.8;
-      }
+    .stock-price-main .currency {
+        font-size: 0.6em;
+        vertical-align: super;
+        opacity: 0.8;
+    }
 
-      .stock-price-main .change {
-          font-size: 1.2em;
-          font-weight: bold;
-          margin-top: 5px;
-      }
+    .stock-price-main .change {
+        font-size: 1.2em;
+        font-weight: bold;
+        margin-top: 5px;
+    }
 
-      .stock-price-main .today-label {
-          font-size: 0.8em;
-          opacity: 0.7;
-          margin-left: 5px;
-      }
+    .stock-price-main .today-label {
+        font-size: 0.8em;
+        opacity: 0.7;
+        margin-left: 5px;
+    }
 
-      .stock-price-main .timestamp {
-          font-size: 0.8em;
-          color: #7f8c8d;
-          margin-top: 5px;
-      }
+    .stock-price-main .timestamp {
+        font-size: 0.8em;
+        color: #7f8c8d;
+        margin-top: 5px;
+    }
 
-      .daily-yearly-summary {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-          gap: 15px;
-          margin-top: 20px;
-          padding-top: 20px;
-          border-top: 1px solid #e9ecef;
-      }
+    .daily-yearly-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #e9ecef;
+    }
 
-      .summary-item {
-          text-align: center;
-          background: #f8f9fa;
-          padding: 10px;
-          border-radius: 8px;
-      }
+    .summary-item {
+        text-align: center;
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 8px;
+    }
 
-      .summary-label {
-          font-size: 0.8em;
-          color: #7f8c8d;
-          margin-bottom: 5px;
-      }
+    .summary-label {
+        font-size: 0.8em;
+        color: #7f8c8d;
+        margin-bottom: 5px;
+    }
 
-      .summary-value {
-          font-weight: bold;
-          color: #2c3e50;
-      }
-  </style>
+    .summary-value {
+        font-weight: bold;
+        color: #2c3e50;
+    }
+
+  .option-table tr.current-strike {
+      background-color: #e0f7fa; /* Light blue for highlight */
+      font-weight: bold;
+  }
+</style>
 </head>
 <body>
-  <div class="status-indicator" id="statusIndicator">Checking connection...</div>
-  
-  <div class="container">
-      <div class="header">
-          <h1>📈 Comprehensive Stock Market Viewer</h1>
-          <p>Real-time stock data with price ranges, futures, and options</p>
-      </div>
+<div class="status-indicator" id="statusIndicator">Checking connection...</div>
 
-      <div class="controls">
-          <div class="control-group">
-              <input type="text" id="searchInput" placeholder="Search stocks (e.g., RELIANCE, NIFTY, BANK, SBIN)">
-              <select id="exchangeFilter">
-                  <option value="">All Exchanges</option>
-                  <option value="NSE">NSE</option>
-                  <option value="BSE">BSE</option>
-                  <option value="NFO">NFO</option>
-              </select>
-              <select id="typeFilter">
-                  <option value="">All Types</option>
-                  <option value="EQ">Equity</option>
-                  <option value="OPTIDX">Index Options</option>
-                  <option value="OPTSTK">Stock Options</option>
-                  <option value="FUTIDX">Index Futures</option>
-                  <option value="FUTSTK">Stock Futures</option>
-              </select>
-              <button onclick="searchStocks()">🔍 Search</button>
-              <button onclick="loadMarketOverview()">📊 Market Overview</button>
-              <button onclick="loadDerivativeStocks()">📈 Derivatives</button>
-          </div>
-      </div>
+<div class="container">
+    <div class="header">
+        <h1>📈 Comprehensive Stock Market Viewer</h1>
+        <p>Real-time stock data with price ranges, futures, and options</p>
+    </div>
 
-      <div class="tabs">
-          <div class="tab active" onclick="switchTab('search')">🔍 Search Results</div>
-          <div class="tab" onclick="switchTab('overview')">📊 Market Overview</div>
-          <div class="tab" onclick="switchTab('derivatives')">📈 Derivatives</div>
-          <div class="tab" onclick="switchTab('details')">📋 Stock Details</div>
-      </div>
+    <div class="controls">
+        <div class="control-group">
+            <input type="text" id="searchInput" placeholder="Search stocks (e.g., RELIANCE, NIFTY, BANK, SBIN)">
+            <select id="exchangeFilter">
+                <option value="">All Exchanges</option>
+                <option value="NSE">NSE</option>
+                <option value="BSE">BSE</option>
+                <option value="NFO">NFO</option>
+            </select>
+            <select id="typeFilter">
+                <option value="">All Types</option>
+                <option value="EQ">Equity</option>
+                <option value="OPTIDX">Index Options</option>
+                <option value="OPTSTK">Stock Options</option>
+                <option value="FUTIDX">Index Futures</option>
+                <option value="FUTSTK">Stock Futures</option>
+            </select>
+            <button onclick="searchStocks()">🔍 Search</button>
+            <button onclick="loadMarketOverview()">📊 Market Overview</button>
+            <button onclick="loadDerivativeStocks()">📈 Derivatives</button>
+        </div>
+    </div>
 
-      <div class="content">
-          <div id="searchTab" class="tab-content">
-              <div id="searchResults" class="search-results">
-                  <div class="loading">Enter a search term to find stocks</div>
-              </div>
-          </div>
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('search')">🔍 Search Results</div>
+        <div class="tab" onclick="switchTab('overview')">📊 Market Overview</div>
+        <div class="tab" onclick="switchTab('derivatives')">📈 Derivatives</div>
+        <div class="tab" onclick="switchTab('details')">📋 Stock Details</div>
+    </div>
 
-          <div id="overviewTab" class="tab-content" style="display: none;">
-              <div id="marketOverview">
-                  <div class="loading">Click "Market Overview" to load data</div>
-              </div>
-          </div>
+    <div class="content">
+        <div id="searchTab" class="tab-content">
+            <div id="searchResults" class="search-results">
+                <div class="loading">Enter a search term to find stocks</div>
+            </div>
+        </div>
 
-          <div id="derivativesTab" class="tab-content" style="display: none;">
-              <div id="derivativeStocks">
-                  <div class="loading">Click "Derivatives" to load stocks with F&O</div>
-              </div>
-          </div>
+        <div id="overviewTab" class="tab-content" style="display: none;">
+            <div id="marketOverview">
+                <div class="loading">Click "Market Overview" to load data</div>
+            </div>
+        </div>
 
-          <div id="detailsTab" class="tab-content" style="display: none;">
-              <div id="stockDetails">
-                  <div class="loading">Click on any stock to view detailed information</div>
-              </div>
-          </div>
-      </div>
-  </div>
+        <div id="derivativesTab" class="tab-content" style="display: none;">
+            <div id="derivativeStocks">
+                <div class="loading">Click "Derivatives" to load stocks with F&O</div>
+            </div>
+        </div>
 
-  <script>
-      const API_BASE = 'http://localhost:3001/api';
-      let currentTab = 'search';
+        <div id="detailsTab" class="tab-content" style="display: none;">
+            <div id="stockDetails">
+                <div class="loading">Click on any stock to view detailed information</div>
+            </div>
+        </div>
+    </div>
+</div>
 
-      // Check API connection status
-      async function checkApiStatus() {
-          try {
-              const response = await fetch(`${API_BASE}/auth/status`);
-              const data = await response.json();
-              
-              const indicator = document.getElementById('statusIndicator');
-              if (data.success) {
-                  indicator.textContent = data.status.authenticated ? '🟢 Connected & Authenticated' : '🟡 Connected (Not Authenticated)';
-                  indicator.className = 'status-indicator online';
-              } else {
-                  indicator.textContent = '🔴 API Error';
-                  indicator.className = 'status-indicator offline';
-              }
-          } catch (error) {
-              const indicator = document.getElementById('statusIndicator');
-              indicator.textContent = '🔴 API Offline';
-              indicator.className = 'status-indicator offline';
-          }
-      }
+<script>
+    const API_BASE = 'http://localhost:3001/api';
+    let currentTab = 'search';
 
-      // Tab switching
-      function switchTab(tabName) {
-          // Hide all tabs
-          document.querySelectorAll('.tab-content').forEach(tab => {
-              tab.style.display = 'none';
-          });
-          
-          // Remove active class from all tabs
-          document.querySelectorAll('.tab').forEach(tab => {
-              tab.classList.remove('active');
-          });
-          
-          // Show selected tab
-          document.getElementById(tabName + 'Tab').style.display = 'block';
-          event.target.classList.add('active');
-          currentTab = tabName;
-      }
+    // Check API connection status
+    async function checkApiStatus() {
+        try {
+            const response = await fetch(`${API_BASE}/auth/status`);
+            const data = await response.json();
+            
+            const indicator = document.getElementById('statusIndicator');
+            if (data.success) {
+                indicator.textContent = data.status.authenticated ? '🟢 Connected & Authenticated' : '🟡 Connected (Not Authenticated)';
+                indicator.className = 'status-indicator online';
+            } else {
+                indicator.textContent = '🔴 API Error';
+                indicator.className = 'status-indicator offline';
+            }
+        } catch (error) {
+            const indicator = document.getElementById('statusIndicator');
+            indicator.textContent = '🔴 API Offline';
+            indicator.className = 'status-indicator offline';
+        }
+    }
 
-      // Search stocks
-      async function searchStocks() {
-          const query = document.getElementById('searchInput').value;
-          const exchange = document.getElementById('exchangeFilter').value;
-          const type = document.getElementById('typeFilter').value;
-          
-          if (!query || query.length < 2) {
-              alert('Please enter at least 2 characters');
-              return;
-          }
+    // Tab switching
+    function switchTab(tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.style.display = 'none';
+        });
+        
+        // Remove active class from all tabs
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        // Show selected tab
+        document.getElementById(tabName + 'Tab').style.display = 'block';
+        event.target.classList.add('active');
+        currentTab = tabName;
+    }
 
-          document.getElementById('searchResults').innerHTML = '<div class="loading">Searching...</div>';
+    // Search stocks
+    async function searchStocks() {
+        const query = document.getElementById('searchInput').value;
+        const exchange = document.getElementById('exchangeFilter').value;
+        const type = document.getElementById('typeFilter').value;
+        
+        if (!query || query.length < 2) {
+            alert('Please enter at least 2 characters');
+            return;
+        }
 
-          try {
-              let url = `${API_BASE}/market-data/search?q=${encodeURIComponent(query)}`;
-              if (exchange) url += `&exchange=${exchange}`;
-              if (type) url += `&type=${type}`;
+        document.getElementById('searchResults').innerHTML = '<div class="loading">Searching...</div>';
 
-              const response = await fetch(url);
-              const data = await response.json();
+        try {
+            let url = `${API_BASE}/market-data/search?q=${encodeURIComponent(query)}`;
+            if (exchange) url += `&exchange=${exchange}`;
+            if (type) url += `&type=${type}`;
 
-              if (data.success) {
-                  displaySearchResults(data.data);
-              } else {
-                  document.getElementById('searchResults').innerHTML = 
-                      `<div class="error">Error: ${data.message}</div>`;
-              }
-          } catch (error) {
-              document.getElementById('searchResults').innerHTML = 
-                  `<div class="error">Network error: ${error.message}</div>`;
-          }
-      }
+            const response = await fetch(url);
+            const data = await response.json();
 
-      // Display search results
-      function displaySearchResults(stocks) {
-          if (stocks.length === 0) {
-              document.getElementById('searchResults').innerHTML = 
-                  '<div class="loading">No stocks found</div>';
-              return;
-          }
+            if (data.success) {
+                displaySearchResults(data.data);
+            } else {
+                document.getElementById('searchResults').innerHTML = 
+                    `<div class="error">Error: ${data.message}</div>`;
+            }
+        } catch (error) {
+            document.getElementById('searchResults').innerHTML = 
+                `<div class="error">Network error: ${error.message}</div>`;
+        }
+    }
 
-          const html = stocks.map(stock => `
-              <div class="stock-card" onclick="loadStockDetails('${stock.symbol}')">
-                  <div class="stock-header">
-                      <div>
-                          <div class="stock-symbol">${stock.symbol}</div>
-                          <div class="stock-name">${stock.name}</div>
-                      </div>
-                      <div class="stock-info">
-                          <div style="text-align: right;">
-                              <span class="badge" style="background: #3498db; color: white;">${stock.exchange}</span>
-                              <span class="badge" style="background: #2ecc71; color: white;">${stock.type}</span>
-                          </div>
-                      </div>
-                  </div>
-                  ${stock.derivatives ? `
-                      <div class="derivatives-info">
-                          <div class="derivatives-badges">
-                              ${stock.derivatives.hasFutures ? '<span class="badge futures">Futures Available</span>' : ''}
-                              ${stock.derivatives.hasOptions ? '<span class="badge options">Options Available</span>' : ''}
-                          </div>
-                          ${stock.derivatives.expiries ? `<div>Expiries: ${stock.derivatives.expiries.slice(0, 3).join(', ')}${stock.derivatives.expiries.length > 3 ? '...' : ''}</div>` : ''}
-                      </div>
-                  ` : ''}
-              </div>
-          `).join('');
+    // Display search results
+    function displaySearchResults(stocks) {
+        if (stocks.length === 0) {
+            document.getElementById('searchResults').innerHTML = 
+                '<div class="loading">No stocks found</div>';
+            return;
+        }
 
-          document.getElementById('searchResults').innerHTML = html;
-      }
+        const html = stocks.map(stock => `
+            <div class="stock-card" onclick="loadStockDetails('${stock.symbol}')">
+                <div class="stock-header">
+                    <div>
+                        <div class="stock-symbol">${stock.symbol}</div>
+                        <div class="stock-name">${stock.name}</div>
+                    </div>
+                    <div class="stock-info">
+                        <div style="text-align: right;">
+                            <span class="badge" style="background: #3498db; color: white;">${stock.exchange}</span>
+                            <span class="badge" style="background: #2ecc71; color: white;">${stock.type}</span>
+                        </div>
+                    </div>
+                </div>
+                ${stock.derivatives ? `
+                    <div class="derivatives-info">
+                        <div class="derivatives-badges">
+                            ${stock.derivatives.hasFutures ? '<span class="badge futures">Futures Available</span>' : ''}
+                            ${stock.derivatives.hasOptions ? '<span class="badge options">Options Available</span>' : ''}
+                        </div>
+                        ${stock.derivatives.expiries ? `<div>Expiries: ${stock.derivatives.expiries.slice(0, 3).join(', ')}${stock.derivatives.expiries.length > 3 ? '...' : ''}</div>` : ''}
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
 
-      // Load market overview
-      async function loadMarketOverview() {
-          switchTab('overview');
-          document.getElementById('marketOverview').innerHTML = '<div class="loading">Loading market overview...</div>';
+        document.getElementById('searchResults').innerHTML = html;
+    }
 
-          try {
-              const response = await fetch(`${API_BASE}/market-data/overview?limit=50&includeDerivatives=true`);
-              const data = await response.json();
+    // Load market overview
+    async function loadMarketOverview() {
+        switchTab('overview');
+        document.getElementById('marketOverview').innerHTML = '<div class="loading">Loading market overview...</div>';
 
-              if (data.success) {
-                  displayMarketOverview(data.data);
-              } else {
-                  document.getElementById('marketOverview').innerHTML = 
-                      `<div class="error">Error: ${data.message}</div>`;
-              }
-          } catch (error) {
-              document.getElementById('marketOverview').innerHTML = 
-                  `<div class="error">Network error: ${error.message}</div>`;
-          }
-      }
+        try {
+            const response = await fetch(`${API_BASE}/market-data/overview?limit=50&includeDerivatives=true`);
+            const data = await response.json();
 
-      // Display market overview
-      function displayMarketOverview(stocks) {
-          const html = stocks.map(stock => `
-              <div class="stock-card" onclick="loadStockDetails('${stock.symbol}')">
-                  <div class="stock-header">
-                      <div>
-                          <div class="stock-symbol">${stock.symbol}</div>
-                          <div class="stock-name">${stock.name}</div>
-                      </div>
-                      ${stock.liveData ? `
-                          <div class="stock-price">
-                              <div class="ltp">₹${stock.liveData.ltp.toFixed(2)}</div>
-                              <div class="change ${stock.liveData.change >= 0 ? 'positive' : 'negative'}">
-                                  ${stock.liveData.change >= 0 ? '+' : ''}${stock.liveData.change.toFixed(2)} 
-                                  (${stock.liveData.changePercent.toFixed(2)}%)
-                              </div>
-                          </div>
-                      ` : ''}
-                  </div>
-                  
-                  ${stock.liveData ? `
-                      <div class="price-ranges">
-                          <div class="price-range">
-                              <h4>Today's Range</h4>
-                              <div class="range-values">
-                                  <div class="range-value">
-                                      <div class="range-label">High</div>
-                                      <div class="range-price">₹${stock.liveData.high.toFixed(2)}</div>
-                                  </div>
-                                  <div class="range-value">
-                                      <div class="range-label">Low</div>
-                                      <div class="range-price">₹${stock.liveData.low.toFixed(2)}</div>
-                                  </div>
-                              </div>
-                          </div>
-                          <div class="price-range">
-                              <h4>52-Week Range</h4>
-                              <div class="range-values">
-                                  <div class="range-value">
-                                      <div class="range-label">High</div>
-                                      <div class="range-price">₹${stock.liveData.weekHigh52.toFixed(2)}</div>
-                                  </div>
-                                  <div class="range-value">
-                                      <div class="range-label">Low</div>
-                                      <div class="range-price">₹${stock.liveData.weekLow52.toFixed(2)}</div>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                  ` : ''}
+            if (data.success) {
+                displayMarketOverview(data.data);
+            } else {
+                document.getElementById('marketOverview').innerHTML = 
+                    `<div class="error">Error: ${data.message}</div>`;
+            }
+        } catch (error) {
+            document.getElementById('marketOverview').innerHTML = 
+                `<div class="error">Network error: ${error.message}</div>`;
+        }
+    }
 
-                  ${stock.derivatives ? `
-                      <div class="derivatives-info">
-                          <div class="derivatives-badges">
-                              ${stock.derivatives.hasFutures ? '<span class="badge futures">Futures</span>' : ''}
-                              ${stock.derivatives.hasOptions ? '<span class="badge options">Options</span>' : ''}
-                          </div>
-                          <div>
-                              ${stock.derivatives.futuresCount ? `Futures: ${stock.derivatives.futuresCount} contracts` : ''}
-                              ${stock.derivatives.optionsCount ? `Options: ${stock.derivatives.optionsCount} contracts` : ''}
-                          </div>
-                      </div>
-                  ` : ''}
-              </div>
-          `).join('');
+    // Display market overview
+    function displayMarketOverview(stocks) {
+        const html = stocks.map(stock => `
+            <div class="stock-card" onclick="loadStockDetails('${stock.symbol}')">
+                <div class="stock-header">
+                    <div>
+                        <div class="stock-symbol">${stock.symbol}</div>
+                        <div class="stock-name">${stock.name}</div>
+                    </div>
+                    ${stock.liveData ? `
+                        <div class="stock-price">
+                            <div class="ltp">₹${stock.liveData.ltp.toFixed(2)}</div>
+                            <div class="change ${stock.liveData.change >= 0 ? 'positive' : 'negative'}">
+                                ${stock.liveData.change >= 0 ? '+' : ''}${stock.liveData.change.toFixed(2)} 
+                                (${stock.liveData.changePercent.toFixed(2)}%)
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                ${stock.liveData ? `
+                    <div class="price-ranges">
+                        <div class="price-range">
+                            <h4>Today's Range</h4>
+                            <div class="range-values">
+                                <div class="range-value">
+                                    <div class="range-label">High</div>
+                                    <div class="range-price">₹${stock.liveData.high.toFixed(2)}</div>
+                                </div>
+                                <div class="range-value">
+                                    <div class="range-label">Low</div>
+                                    <div class="range-price">₹${stock.liveData.low.toFixed(2)}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="price-range">
+                            <h4>52-Week Range</h4>
+                            <div class="range-values">
+                                <div class="range-value">
+                                    <div class="range-label">High</div>
+                                    <div class="range-price">₹${stock.liveData.weekHigh52.toFixed(2)}</div>
+                                </div>
+                                <div class="range-value">
+                                    <div class="range-label">Low</div>
+                                    <div class="range-price">₹${stock.liveData.weekLow52.toFixed(2)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
 
-          document.getElementById('marketOverview').innerHTML = html;
-      }
+                ${stock.derivatives ? `
+                    <div class="derivatives-info">
+                        <div class="derivatives-badges">
+                            ${stock.derivatives.hasFutures ? '<span class="badge futures">Futures</span>' : ''}
+                            ${stock.derivatives.hasOptions ? '<span class="badge options">Options</span>' : ''}
+                        </div>
+                        <div>
+                            ${stock.derivatives.futuresCount ? `Futures: ${stock.derivatives.futuresCount} contracts` : ''}
+                            ${stock.derivatives.optionsCount ? `Options: ${stock.derivatives.optionsCount} contracts` : ''}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
 
-      // Load derivative stocks
-      async function loadDerivativeStocks() {
-          switchTab('derivatives');
-          document.getElementById('derivativeStocks').innerHTML = '<div class="loading">Loading stocks with derivatives...</div>';
+        document.getElementById('marketOverview').innerHTML = html;
+    }
 
-          try {
-              const response = await fetch(`${API_BASE}/market-data/derivatives?limit=30`);
-              const data = await response.json();
+    // Load derivative stocks
+    async function loadDerivativeStocks() {
+        switchTab('derivatives');
+        document.getElementById('derivativeStocks').innerHTML = '<div class="loading">Loading stocks with derivatives...</div>';
 
-              if (data.success) {
-                  displayDerivativeStocks(data.data);
-              } else {
-                  document.getElementById('derivativeStocks').innerHTML = 
-                      `<div class="error">Error: ${data.message}</div>`;
-              }
-          } catch (error) {
-              document.getElementById('derivativeStocks').innerHTML = 
-                  `<div class="error">Network error: ${error.message}</div>`;
-          }
-      }
+        try {
+            const response = await fetch(`${API_BASE}/market-data/derivatives?limit=30`);
+            const data = await response.json();
 
-      // Display derivative stocks
-      function displayDerivativeStocks(stocks) {
-          const html = stocks.map(stock => `
-              <div class="stock-card" onclick="loadStockDetails('${stock.symbol}')">
-                  <div class="stock-header">
-                      <div>
-                          <div class="stock-symbol">${stock.symbol}</div>
-                          <div class="stock-name">${stock.name}</div>
-                      </div>
-                      <div>
-                          <button onclick="event.stopPropagation(); loadOptionChain('${stock.symbol}')" 
-                                  style="padding: 8px 15px; background: #e67e22; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                              View Options
-                          </button>
-                      </div>
-                  </div>
-                  
-                  <div class="derivatives-info">
-                      <div class="derivatives-badges">
-                          ${stock.derivatives.hasFutures ? '<span class="badge futures">Futures Available</span>' : ''}
-                          ${stock.derivatives.hasOptions ? '<span class="badge options">Options Available</span>' : ''}
-                      </div>
-                      <div style="margin-top: 10px;">
-                          <strong>Available Expiries:</strong> ${stock.derivatives.expiries.slice(0, 5).join(', ')}
-                          ${stock.derivatives.expiries.length > 5 ? ` (+${stock.derivatives.expiries.length - 5} more)` : ''}
-                      </div>
-                      <div style="margin-top: 5px;">
-                          Futures: ${stock.derivatives.futuresCount} contracts | 
-                          Options: ${stock.derivatives.optionsCount} contracts
-                      </div>
-                  </div>
-              </div>
-          `).join('');
+            if (data.success) {
+                displayDerivativeStocks(data.data);
+            } else {
+                document.getElementById('derivativeStocks').innerHTML = 
+                    `<div class="error">Error: ${data.message}</div>`;
+            }
+        } catch (error) {
+            document.getElementById('derivativeStocks').innerHTML = 
+                `<div class="error">Network error: ${error.message}</div>`;
+        }
+    }
 
-          document.getElementById('derivativeStocks').innerHTML = html;
-      }
+    // Display derivative stocks
+    function displayDerivativeStocks(stocks) {
+        const html = stocks.map(stock => `
+            <div class="stock-card" onclick="loadStockDetails('${stock.symbol}')">
+                <div class="stock-header">
+                    <div>
+                        <div class="stock-symbol">${stock.symbol}</div>
+                        <div class="stock-name">${stock.name}</div>
+                    </div>
+                    <div>
+                        <button onclick="event.stopPropagation(); loadOptionChain('${stock.symbol}')" 
+                                style="padding: 8px 15px; background: #e67e22; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            View Options
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="derivatives-info">
+                    <div class="derivatives-badges">
+                        ${stock.derivatives.hasFutures ? '<span class="badge futures">Futures Available</span>' : ''}
+                        ${stock.derivatives.hasOptions ? '<span class="badge options">Options Available</span>' : ''}
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <strong>Available Expiries:</strong> ${stock.derivatives.expiries.slice(0, 5).join(', ')}
+                        ${stock.derivatives.expiries.length > 5 ? ` (+${stock.derivatives.expiries.length - 5} more)` : ''}
+                    </div>
+                    <div style="margin-top: 5px;">
+                        Futures: ${stock.derivatives.futuresCount} contracts | 
+                        Options: ${stock.derivatives.optionsCount} contracts
+                    </div>
+                </div>
+            </div>
+        `).join('');
 
-      // Load stock details - FIXED URL
-      async function loadStockDetails(symbol) {
-          switchTab('details');
-          document.getElementById('stockDetails').innerHTML = '<div class="loading">Loading stock details...</div>';
+        document.getElementById('derivativeStocks').innerHTML = html;
+    }
 
-          try {
-              // Fixed the URL to match the route
-              const response = await fetch(`${API_BASE}/market-data/stock/${symbol}/details`);
-              const data = await response.json();
+    // Load stock details - FIXED URL
+    async function loadStockDetails(symbol) {
+        switchTab('details');
+        document.getElementById('stockDetails').innerHTML = '<div class="loading">Loading stock details...</div>';
 
-              if (data.success) {
-                  displayStockDetails(data.data);
-              } else {
-                  document.getElementById('stockDetails').innerHTML = 
-                      `<div class="error">Error: ${data.message}</div>`;
-              }
-          } catch (error) {
-              console.error('Error loading stock details:', error);
-              document.getElementById('stockDetails').innerHTML = 
-                  `<div class="error">Network error: ${error.message}<br><small>URL: ${API_BASE}/market-data/stock/${symbol}/details</small></div>`;
-          }
-      }
+        try {
+            // Fixed the URL to match the route
+            const response = await fetch(`${API_BASE}/market-data/stock/${symbol}/details`);
+            const data = await response.json();
 
-      // Display stock details
-      function displayStockDetails(stockData) {
-          const stock = stockData.basic;
-          const prices = stockData.priceRanges;
-          const derivatives = stockData.derivatives;
-          const optionChain = stockData.optionChain;
-          const optionSummary = stockData.optionChainSummary;
+            if (data.success) {
+                displayStockDetails(data.data);
+            } else {
+                document.getElementById('stockDetails').innerHTML = 
+                    `<div class="error">Error: ${data.message}</div>`;
+            }
+        } catch (error) {
+            console.error('Error loading stock details:', error);
+            document.getElementById('stockDetails').innerHTML = 
+                `<div class="error">Network error: ${error.message}<br><small>URL: ${API_BASE}/market-data/stock/${symbol}/details</small></div>`;
+        }
+    }
 
-          let html = `
-              <div class="stock-card">
-                  <div class="stock-header">
-                      <div>
-                          <div class="stock-name">${stock.name}</div>
-                          <div class="stock-symbol">${stock.symbol}</div>
-                      </div>
-                      ${prices ? `
-                          <div class="stock-price-main">
-                              <div class="ltp">₹${prices.current.ltp.toFixed(2)} <span class="currency">INR</span></div>
-                              <div class="change ${prices.current.change >= 0 ? 'positive' : 'negative'}">
-                                  ${prices.current.change >= 0 ? '+' : ''}${prices.current.change.toFixed(2)}
-                                  (${prices.current.changePercent.toFixed(2)}%) <span class="today-label">today</span>
-                              </div>
-                              <div class="timestamp">${prices.current.timestamp ? new Date(prices.current.timestamp).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true, timeZoneName: 'short' }) : ''}</div>
-                          </div>
-                      ` : ''}
-              </div>
+    // Display stock details
+    function displayStockDetails(stockData) {
+        const stock = stockData.basic;
+        const prices = stockData.priceRanges;
+        const derivatives = stockData.derivatives;
+        const optionChain = stockData.optionChain;
+        const optionSummary = stockData.optionChainSummary;
 
-              ${prices ? `
-                  <div class="price-ranges">
-                      <div class="price-range">
-                          <h4>Today's Range</h4>
-                          <div class="range-values">
-                              <div class="range-value">
-                                  <div class="range-label">Open</div>
-                                  <div class="range-price">₹${prices.today.open.toFixed(2)}</div>
-                              </div>
-                              <div class="range-value">
-                                  <div class="range-label">High</div>
-                                  <div class="range-price">₹${prices.today.high.toFixed(2)}</div>
-                              </div>
-                              <div class="range-value">
-                                  <div class="range-label">Low</div>
-                                  <div class="range-price">₹${prices.today.low.toFixed(2)}</div>
-                              </div>
-                              <div class="range-value">
-                                  <div class="range-label">Close</div>
-                                  <div class="range-price">₹${prices.today.close.toFixed(2)}</div>
-                              </div>
-                          </div>
-                      </div>
-                      <div class="price-range">
-                          <h4>Weekly Range</h4>
-                          <div class="range-values">
-                              <div class="range-value">
-                                  <div class="range-label">High</div>
-                                  <div class="range-price">₹${prices.weekly.high.toFixed(2)}</div>
-                                  <div class="range-label" style="font-size: 0.7em; color: ${prices.weekly.changeFromWeekHigh >= 0 ? '#27ae60' : '#e74c3c'}">
-                                      ${prices.weekly.changeFromWeekHigh >= 0 ? '+' : ''}${prices.weekly.changeFromWeekHigh.toFixed(1)}%
-                                  </div>
-                              </div>
-                              <div class="range-value">
-                                  <div class="range-label">Low</div>
-                                  <div class="range-price">₹${prices.weekly.low.toFixed(2)}</div>
-                                  <div class="range-label" style="font-size: 0.7em; color: ${prices.weekly.changeFromWeekLow >= 0 ? '#27ae60' : '#e74c3c'}">
-                                      ${prices.weekly.changeFromWeekLow >= 0 ? '+' : ''}${prices.weekly.changeFromWeekLow.toFixed(1)}%
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                      <div class="price-range">
-                          <h4>Monthly Range</h4>
-                          <div class="range-values">
-                              <div class="range-value">
-                                  <div class="range-label">High</div>
-                                  <div class="range-price">₹${prices.monthly.high.toFixed(2)}</div>
-                                  <div class="range-label" style="font-size: 0.7em; color: ${prices.monthly.changeFromMonthHigh >= 0 ? '#27ae60' : '#e74c3c'}">
-                                      ${prices.monthly.changeFromMonthHigh >= 0 ? '+' : ''}${prices.monthly.changeFromMonthHigh.toFixed(1)}%
-                                  </div>
-                              </div>
-                              <div class="range-value">
-                                  <div class="range-label">Low</div>
-                                  <div class="range-price">₹${prices.monthly.low.toFixed(2)}</div>
-                                  <div class="range-label" style="font-size: 0.7em; color: ${prices.monthly.changeFromMonthLow >= 0 ? '#27ae60' : '#e74c3c'}">
-                                      ${prices.monthly.changeFromMonthLow >= 0 ? '+' : ''}${prices.monthly.changeFromMonthLow.toFixed(1)}%
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                      <div class="price-range">
-                          <h4>52-Week Range</h4>
-                          <div class="range-values">
-                              <div class="range-value">
-                                  <div class="range-label">High</div>
-                                  <div class="range-price">₹${prices.yearly.high52Week.toFixed(2)}</div>
-                                  <div class="range-label" style="font-size: 0.7em; color: ${prices.yearly.changeFrom52WeekHigh >= 0 ? '#27ae60' : '#e74c3c'}">
-                                      ${prices.yearly.changeFrom52WeekHigh >= 0 ? '+' : ''}${prices.yearly.changeFrom52WeekHigh.toFixed(1)}%
-                                  </div>
-                              </div>
-                              <div class="range-value">
-                                  <div class="range-label">Low</div>
-                                  <div class="range-price">₹${prices.yearly.low52Week.toFixed(2)}</div>
-                                  <div class="range-label" style="font-size: 0.7em; color: ${prices.yearly.changeFrom52WeekLow >= 0 ? '#27ae60' : '#e74c3c'}">
-                                      ${prices.yearly.changeFrom52WeekLow >= 0 ? '+' : ''}${prices.yearly.changeFrom52WeekLow.toFixed(1)}%
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                      ${prices.circuits.upperCircuit > 0 ? `
-                          <div class="price-range">
-                              <h4>Circuit Limits</h4>
-                              <div class="range-values">
-                                  <div class="range-value">
-                                      <div class="range-label">Upper</div>
-                                      <div class="range-price">₹${prices.circuits.upperCircuit.toFixed(2)}</div>
-                                      <div class="range-label" style="font-size: 0.7em; color: #e67e22">
-                                          ${prices.circuits.distanceFromUpperCircuit.toFixed(1)}% away
-                                      </div>
-                                  </div>
-                                  <div class="range-value">
-                                      <div class="range-label">Lower</div>
-                                      <div class="range-price">₹${prices.circuits.lowerCircuit.toFixed(2)}</div>
-                                      <div class="range-label" style="font-size: 0.7em; color: #e67e22">
-                                          ${prices.circuits.distanceFromLowerCircuit.toFixed(1)}% away
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
-                      ` : ''}
-                  </div>
-              ` : ''}
+        let closestStrike = null;
+        let minDifference = Infinity;
 
-              ${prices ? `
-                  <div class="daily-yearly-summary">
-                      <div class="summary-item">
-                          <div class="summary-label">Open</div>
-                          <div class="summary-value">₹${prices.today.open.toFixed(2)}</div>
-                      </div>
-                      <div class="summary-item">
-                          <div class="summary-label">High</div>
-                          <div class="summary-value">₹${prices.today.high.toFixed(2)}</div>
-                      </div>
-                      <div class="summary-item">
-                          <div class="summary-label">Low</div>
-                          <div class="summary-value">₹${prices.today.low.toFixed(2)}</div>
-                      </div>
-                      <div class="summary-item">
-                          <div class="summary-label">52-wk high</div>
-                          <div class="summary-value">₹${prices.yearly.high52Week.toFixed(2)}</div>
-                      </div>
-                      <div class="summary-item">
-                          <div class="summary-label">52-wk low</div>
-                          <div class="summary-value">₹${prices.yearly.low52Week.toFixed(2)}</div>
-                      </div>
-                  </div>
-              ` : ''}
+        if (optionChain && optionChain.length > 0 && prices && prices.current) {
+            const underlyingLTP = prices.current.ltp;
 
-              ${derivatives.hasFutures || derivatives.hasOptions ? `
-                  <div class="derivatives-info">
-                      <h3>Derivatives Information</h3>
-                      <div class="derivatives-badges">
-                          ${derivatives.hasFutures ? '<span class="badge futures">Futures Available</span>' : ''}
-                          ${derivatives.hasOptions ? '<span class="badge options">Options Available</span>' : ''}
-                      </div>
-                      <div style="margin-top: 15px;">
-                          <strong>Available Expiries:</strong> ${derivatives.expiries.join(', ')}
-                      </div>
-                  </div>
-              ` : ''}
+            optionChain.forEach(option => {
+                const strike = option.strike;
+                const difference = Math.abs(strike - underlyingLTP);
 
-              ${optionChain && optionChain.length > 0 ? `
-                  <div class="option-chain">
-                      <h3>📊 Complete Option Chain</h3>
-                      ${optionSummary ? `
-                          <div class="derivatives-info" style="margin-bottom: 20px;">
-                              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
-                                  <div><strong>Total Strikes:</strong> ${optionSummary.totalStrikes}</div>
-                                  <div><strong>Call Options:</strong> ${optionSummary.totalCallOptions}</div>
-                                  <div><strong>Put Options:</strong> ${optionSummary.totalPutOptions}</div>
-                                  <div><strong>Strike Range:</strong> ₹${optionSummary.strikeRange.min} - ₹${optionSummary.strikeRange.max}</div>
-                              </div>
-                              <div style="margin-top: 10px;">
-                                  <strong>Expiries:</strong> ${optionSummary.availableExpiries.join(', ')}
-                              </div>
-                          </div>
-                      ` : ''}
-                      
-                      <div class="expiry-selector">
-                          <label>Filter by Expiry: </label>
-                          <select id="expiryFilter" onchange="filterOptionsByExpiry()">
-                              <option value="">All Expiries</option>
-                              ${optionSummary ? optionSummary.availableExpiries.map(exp => 
-                                  `<option value="${exp}">${exp}</option>`
-                              ).join('') : ''}
-                              
-                              <label style="margin-left: 20px;">Filter by Strike: </label>
-                              <input type="number" id="strikeFilter" placeholder="e.g., 23550" onchange="filterOptionsByStrike()" style="width: 120px;">
-                              <button onclick="clearFilters()" style="margin-left: 10px; padding: 8px 15px;">Clear Filters</button>
-                          </select>
-                      </div>
+                if (difference < minDifference) {
+                    minDifference = difference;
+                    closestStrike = strike;
+                }
+            });
+        }
 
-                      <div style="max-height: 600px; overflow-y: auto; margin-top: 15px;">
-                          <table class="option-table" id="optionChainTable">
-                              <thead>
-                                  <tr>
-                                      <th colspan="6" class="call">CALL OPTIONS (CE)</th>
-                                      <th rowspan="2">STRIKE</th>
-                                      <th rowspan="2">EXPIRY</th>
-                                      <th colspan="6" class="put">PUT OPTIONS (PE)</th>
-                                  </tr>
-                                  <tr>
-                                      <th class="call">LTP</th>
-                                      <th class="call">Change</th>
-                                      <th class="call">Volume</th>
-                                      <th class="call">OI</th>
-                                      <th class="call">IV</th>
-                                      <th class="call">Delta</th>
-                                      <th class="put">Delta</th>
-                                      <th class="put">IV</th>
-                                      <th class="put">OI</th>
-                                      <th class="put">Volume</th>
-                                      <th class="put">Change</th>
-                                      <th class="put">LTP</th>
-                                  </tr>
-                              </thead>
-                              <tbody id="optionTableBody">
-                                  ${optionChain.map(option => `
-                                      <tr data-expiry="${option.expiry}">
-                                          <td class="call">${option.CE ? `₹${option.CE.ltp.toFixed(2)}` : '-'}</td>
-                                          <td class="call ${option.CE ? (option.CE.change >= 0 ? 'positive' : 'negative') : ''}">${option.CE ? `${option.CE.change >= 0 ? '+' : ''}${option.CE.change.toFixed(2)}` : '-'}</td>
-                                          <td class="call">${option.CE ? option.CE.volume.toLocaleString() : '-'}</td>
-                                          <td class="call">${option.CE ? option.CE.openInterest.toLocaleString() : '-'}</td>
-                                          <td class="call">${option.CE ? `${option.CE.impliedVolatility.toFixed(2)}%` : '-'}</td>
-                                          <td class="call">${option.CE ? option.CE.delta.toFixed(4) : '-'}</td>
-                                          <td style="background: #f8f9fa; font-weight: bold; text-align: center;">₹${option.strike}</td>
-                                          <td style="background: #f8f9fa; text-align: center;">${option.expiry}</td>
-                                          <td class="put">${option.PE ? option.PE.delta.toFixed(4) : '-'}</td>
-                                          <td class="put">${option.PE ? `${option.PE.impliedVolatility.toFixed(2)}%` : '-'}</td>
-                                          <td class="put">${option.PE ? option.PE.openInterest.toLocaleString() : '-'}</td>
-                                          <td class="put">${option.PE ? option.PE.volume.toLocaleString() : '-'}</td>
-                                          <td class="put ${option.PE ? (option.PE.change >= 0 ? 'positive' : 'negative') : ''}">${option.PE ? `${option.PE.change >= 0 ? '+' : ''}${option.PE.change.toFixed(2)}` : '-'}</td>
-                                          <td class="put">${option.PE ? `₹${option.PE.ltp.toFixed(2)}` : '-'}</td>
-                                      </tr>
-                                  `).join('')}
-                              </tbody>
-                          </table>
-                      </div>
-                  </div>
-              ` : ''}
-          </div>
-      `;
+        let html = `
+            <div class="stock-card">
+                <div class="stock-header">
+                    <div>
+                        <div class="stock-name">${stock.name}</div>
+                        <div class="stock-symbol">${stock.symbol}</div>
+                    </div>
+                    ${prices ? `
+                        <div class="stock-price-main">
+                            <div class="ltp">₹${prices.current.ltp.toFixed(2)} <span class="currency">INR</span></div>
+                            <div class="change ${prices.current.change >= 0 ? 'positive' : 'negative'}">
+                                ${prices.current.change >= 0 ? '+' : ''}${prices.current.change.toFixed(2)}
+                                (${prices.current.changePercent.toFixed(2)}%) <span class="today-label">today</span>
+                            </div>
+                            <div class="timestamp">${prices.current.timestamp ? new Date(prices.current.timestamp).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true, timeZoneName: 'short' }) : ''}</div>
+                        </div>
+                    ` : ''}
+            </div>
 
-      document.getElementById('stockDetails').innerHTML = html;
-  }
+            ${prices ? `
+                <div class="price-ranges">
+                    <div class="price-range">
+                        <h4>Today's Range</h4>
+                        <div class="range-values">
+                            <div class="range-value">
+                                <div class="range-label">Open</div>
+                                <div class="range-price">₹${prices.today.open.toFixed(2)}</div>
+                            </div>
+                            <div class="range-value">
+                                <div class="range-label">High</div>
+                                <div class="range-price">₹${prices.today.high.toFixed(2)}</div>
+                            </div>
+                            <div class="range-value">
+                                <div class="range-label">Low</div>
+                                <div class="range-price">₹${prices.today.low.toFixed(2)}</div>
+                            </div>
+                            <div class="range-value">
+                                <div class="range-label">Close</div>
+                                <div class="range-price">₹${prices.today.close.toFixed(2)}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="price-range">
+                        <h4>Weekly Range</h4>
+                        <div class="range-values">
+                            <div class="range-value">
+                                <div class="range-label">High</div>
+                                <div class="range-price">₹${prices.weekly.high.toFixed(2)}</div>
+                                <div class="range-label" style="font-size: 0.7em; color: ${prices.weekly.changeFromWeekHigh >= 0 ? '#27ae60' : '#e74c3c'}">
+                                    ${prices.weekly.changeFromWeekHigh >= 0 ? '+' : ''}${prices.weekly.changeFromWeekHigh.toFixed(1)}%
+                                </div>
+                            </div>
+                            <div class="range-value">
+                                <div class="range-label">Low</div>
+                                <div class="range-price">₹${prices.weekly.low.toFixed(2)}</div>
+                                <div class="range-label" style="font-size: 0.7em; color: ${prices.weekly.changeFromWeekLow >= 0 ? '#27ae60' : '#e74c3c'}">
+                                    ${prices.weekly.changeFromWeekLow >= 0 ? '+' : ''}${prices.weekly.changeFromWeekLow.toFixed(1)}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="price-range">
+                        <h4>Monthly Range</h4>
+                        <div class="range-values">
+                            <div class="range-value">
+                                <div class="range-label">High</div>
+                                <div class="range-price">₹${prices.monthly.high.toFixed(2)}</div>
+                                <div class="range-label" style="font-size: 0.7em; color: ${prices.monthly.changeFromMonthHigh >= 0 ? '#27ae60' : '#e74c3c'}">
+                                    ${prices.monthly.changeFromMonthHigh >= 0 ? '+' : ''}${prices.monthly.changeFromMonthHigh.toFixed(1)}%
+                                </div>
+                            </div>
+                            <div class="range-value">
+                                <div class="range-label">Low</div>
+                                <div class="range-price">₹${prices.monthly.low.toFixed(2)}</div>
+                                <div class="range-label" style="font-size: 0.7em; color: ${prices.monthly.changeFromMonthLow >= 0 ? '#27ae60' : '#e74c3c'}">
+                                    ${prices.monthly.changeFromMonthLow >= 0 ? '+' : ''}${prices.monthly.changeFromMonthLow.toFixed(1)}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="price-range">
+                        <h4>52-Week Range</h4>
+                        <div class="range-values">
+                            <div class="range-value">
+                                <div class="range-label">High</div>
+                                <div class="range-price">₹${prices.yearly.high52Week.toFixed(2)}</div>
+                                <div class="range-label" style="font-size: 0.7em; color: ${prices.yearly.changeFrom52WeekHigh >= 0 ? '#27ae60' : '#e74c3c'}">
+                                    ${prices.yearly.changeFrom52WeekHigh >= 0 ? '+' : ''}${prices.yearly.changeFrom52WeekHigh.toFixed(1)}%
+                                </div>
+                            </div>
+                            <div class="range-value">
+                                <div class="range-label">Low</div>
+                                <div class="range-price">₹${prices.yearly.low52Week.toFixed(2)}</div>
+                                <div class="range-label" style="font-size: 0.7em; color: ${prices.yearly.changeFrom52WeekLow >= 0 ? '#27ae60' : '#e74c3c'}">
+                                    ${prices.yearly.changeFrom52WeekLow >= 0 ? '+' : ''}${prices.yearly.changeFrom52WeekLow.toFixed(1)}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    ${prices.circuits.upperCircuit > 0 ? `
+                        <div class="price-range">
+                            <h4>Circuit Limits</h4>
+                            <div class="range-values">
+                                <div class="range-value">
+                                    <div class="range-label">Upper</div>
+                                    <div class="range-price">₹${prices.circuits.upperCircuit.toFixed(2)}</div>
+                                    <div class="range-label" style="font-size: 0.7em; color: #e67e22">
+                                        ${prices.circuits.distanceFromUpperCircuit.toFixed(1)}% away
+                                    </div>
+                                </div>
+                                <div class="range-value">
+                                    <div class="range-label">Lower</div>
+                                    <div class="range-price">₹${prices.circuits.lowerCircuit.toFixed(2)}</div>
+                                    <div class="range-label" style="font-size: 0.7em; color: #e67e22">
+                                        ${prices.circuits.distanceFromLowerCircuit.toFixed(1)}% away
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            ` : ''}
 
-      // Filter options by strike price
-      function filterOptionsByStrike() {
-          const selectedStrike = document.getElementById('strikeFilter').value;
-          const selectedExpiry = document.getElementById('expiryFilter').value;
-          const rows = document.querySelectorAll('#optionTableBody tr');
-          
-          rows.forEach(row => {
-              const strikeCell = row.querySelector('td:nth-child(7)'); // Strike column
-              const strikeValue = strikeCell ? strikeCell.textContent.replace('₹', '') : '';
-              
-              const strikeMatch = !selectedStrike || strikeValue === selectedStrike;
-              const expiryMatch = !selectedExpiry || row.dataset.expiry === selectedExpiry;
-              
-              if (strikeMatch && expiryMatch) {
-                  row.style.display = '';
-                  row.style.backgroundColor = selectedStrike && strikeValue === selectedStrike ? '#fff3cd' : '';
-              } else {
-                  row.style.display = 'none';
-              }
-          });
-      }
+            ${prices ? `
+                <div class="daily-yearly-summary">
+                    <div class="summary-item">
+                        <div class="summary-label">Open</div>
+                        <div class="summary-value">₹${prices.today.open.toFixed(2)}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">High</div>
+                        <div class="summary-value">₹${prices.today.high.toFixed(2)}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Low</div>
+                        <div class="summary-value">₹${prices.today.low.toFixed(2)}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">52-wk high</div>
+                        <div class="summary-value">₹${prices.yearly.high52Week.toFixed(2)}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">52-wk low</div>
+                        <div class="summary-value">₹${prices.yearly.low52Week.toFixed(2)}</div>
+                    </div>
+                </div>
+            ` : ''}
 
-      // Clear all filters
-      function clearFilters() {
-          document.getElementById('strikeFilter').value = '';
-          document.getElementById('expiryFilter').value = '';
-          const rows = document.querySelectorAll('#optionTableBody tr');
-          rows.forEach(row => {
-              row.style.display = '';
-              row.style.backgroundColor = '';
-          });
-      }
+            ${derivatives.hasFutures || derivatives.hasOptions ? `
+                <div class="derivatives-info">
+                    <h3>Derivatives Information</h3>
+                    <div class="derivatives-badges">
+                        ${derivatives.hasFutures ? '<span class="badge futures">Futures Available</span>' : ''}
+                        ${derivatives.hasOptions ? '<span class="badge options">Options Available</span>' : ''}
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <strong>Available Expiries:</strong> ${derivatives.expiries.join(', ')}
+                    </div>
+                </div>
+            ` : ''}
 
-      // Update the existing filterOptionsByExpiry function to work with strike filter
-      function filterOptionsByExpiry() {
-          filterOptionsByStrike(); // This will handle both filters
-      }
-
-      // Load option chain
-      async function loadOptionChain(symbol) {
-          const optionChainHtml = `
-              <div class="option-chain">
-                  <h3>Option Chain for ${symbol}</h3>
-                  <div class="expiry-selector">
-                      <label>Select Expiry: </label>
-                      <select id="expirySelect" onchange="loadOptionChainForExpiry('${symbol}', this.value)">
-                          <option value="">All Expiries</option>
+            ${optionChain && optionChain.length > 0 ? `
+                <div class="option-chain">
+                    <h3>📊 Complete Option Chain</h3>
+                    ${optionSummary ? `
+                        <div class="derivatives-info" style="margin-bottom: 20px;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                                <div><strong>Total Strikes:</strong> ${optionSummary.totalStrikes}</div>
+                                <div><strong>Call Options:</strong> ${optionSummary.totalCallOptions}</div>
+                                <div><strong>Put Options:</strong> ${optionSummary.totalPutOptions}</div>
+                                <div><strong>Strike Range:</strong> ₹${optionSummary.strikeRange.min} - ₹${optionSummary.strikeRange.max}</div>
+                            </div>
+                            <div style="margin-top: 10px;">
+                                <strong>Expiries:</strong> ${optionSummary.availableExpiries.join(', ')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="expiry-selector">
+                        <label>Filter by Expiry: </label>
+                        <select id="expiryFilter" onchange="filterOptionsByExpiry()">
+                            <option value="">All Expiries</option>
+                            ${optionSummary ? optionSummary.availableExpiries.map(exp => 
+                                `<option value="${exp}">${exp}</option>`
+                            ).join('') : ''}
                       </select>
+                      
+                      <label style="margin-left: 20px;">Filter by Strike: </label>
+                      <input type="number" id="strikeFilter" placeholder="e.g., 23550" onchange="filterOptionsByStrike()" style="width: 120px;">
+                      <button onclick="clearFilters()" style="margin-left: 10px; padding: 8px 15px;">Clear Filters</button>
                   </div>
-                  <div id="optionChainData" class="loading">Loading option chain...</div>
+
+                  <div style="max-height: 600px; overflow-y: auto; margin-top: 15px;">
+                      <table class="option-table" id="optionChainTable">
+                          <thead>
+                              <tr>
+                                  <th colspan="6" class="call">CALL OPTIONS (CE)</th>
+                                  <th rowspan="2">STRIKE</th>
+                                  <th rowspan="2">EXPIRY</th>
+                                  <th colspan="6" class="put">PUT OPTIONS (PE)</th>
+                              </tr>
+                              <tr>
+                                  <th class="call">LTP</th>
+                                  <th class="call">Change</th>
+                                  <th class="call">Volume</th>
+                                  <th class="call">OI</th>
+                                  <th class="call">IV</th>
+                                  <th class="call">Delta</th>
+                                  <th class="put">Delta</th>
+                                  <th class="put">IV</th>
+                                  <th class="put">OI</th>
+                                  <th class="put">Volume</th>
+                                  <th class="put">Change</th>
+                                  <th class="put">LTP</th>
+                              </tr>
+                          </thead>
+                          <tbody id="optionTableBody">
+                              ${optionChain.map(option => `
+                                  <tr data-expiry="${option.expiry}" class="${option.strike === closestStrike ? 'current-strike' : ''}">
+                                      <td class="call">${option.CE ? `₹${option.CE.ltp.toFixed(2)}` : '-'}</td>
+                                      <td class="call ${option.CE ? (option.CE.change >= 0 ? 'positive' : 'negative') : ''}">${option.CE ? `${option.CE.change >= 0 ? '+' : ''}${option.CE.change.toFixed(2)}` : '-'}</td>
+                                      <td class="call">${option.CE ? option.CE.volume.toLocaleString() : '-'}</td>
+                                      <td class="call">${option.CE ? option.CE.openInterest.toLocaleString() : '-'}</td>
+                                      <td class="call">${option.CE ? `${option.CE.impliedVolatility.toFixed(2)}%` : '-'}</td>
+                                      <td class="call">${option.CE ? option.CE.delta.toFixed(4) : '-'}</td>
+                                      <td style="background: #f8f9fa; font-weight: bold; text-align: center;">₹${option.strike}</td>
+                                      <td style="background: #f8f9fa; text-align: center;">${option.expiry}</td>
+                                      <td class="put">${option.PE ? option.PE.delta.toFixed(4) : '-'}</td>
+                                      <td class="put">${option.PE ? `${option.PE.impliedVolatility.toFixed(2)}%` : '-'}</td>
+                                      <td class="put">${option.PE ? option.PE.openInterest.toLocaleString() : '-'}</td>
+                                      <td class="put">${option.PE ? option.PE.volume.toLocaleString() : '-'}</td>
+                                      <td class="put ${option.PE ? (option.PE.change >= 0 ? 'positive' : 'negative') : ''}">${option.PE ? `${option.PE.change >= 0 ? '+' : ''}${option.PE.change.toFixed(2)}` : '-'}</td>
+                                      <td class="put">${option.PE ? `₹${option.PE.ltp.toFixed(2)}` : '-'}</td>
+                                  </tr>
+                              `).join('')}
+                          </tbody>
+                      </table>
+                  </div>
               </div>
-          `;
+          ` : ''}
+      </div>
+  `;
 
-          document.getElementById('stockDetails').innerHTML += optionChainHtml;
+  document.getElementById('stockDetails').innerHTML = html;
+}
 
-          try {
-              const response = await fetch(`${API_BASE}/market-data/stock/${symbol}/options`);
-              const data = await response.json();
+    // Filter options by strike price
+    function filterOptionsByStrike() {
+        const selectedStrike = document.getElementById('strikeFilter').value;
+        const selectedExpiry = document.getElementById('expiryFilter').value;
+        const rows = document.querySelectorAll('#optionTableBody tr');
+        
+        rows.forEach(row => {
+            const strikeCell = row.querySelector('td:nth-child(7)'); // Strike column
+            const strikeValue = strikeCell ? strikeCell.textContent.replace('₹', '') : '';
+            
+            const strikeMatch = !selectedStrike || strikeValue === selectedStrike;
+            const expiryMatch = !selectedExpiry || row.dataset.expiry === selectedExpiry;
+            
+            if (strikeMatch && expiryMatch) {
+                row.style.display = '';
+                row.style.backgroundColor = selectedStrike && strikeValue === selectedStrike ? '#fff3cd' : '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
 
-              if (data.success) {
-                  // Populate expiry dropdown
-                  const expirySelect = document.getElementById('expirySelect');
-                  data.availableExpiries.forEach(expiry => {
-                      const option = document.createElement('option');
-                      option.value = expiry;
-                      option.textContent = expiry;
-                      expirySelect.appendChild(option);
-                  });
+    // Clear all filters
+    function clearFilters() {
+        document.getElementById('strikeFilter').value = '';
+        document.getElementById('expiryFilter').value = '';
+        const rows = document.querySelectorAll('#optionTableBody tr');
+        rows.forEach(row => {
+            row.style.display = '';
+            row.style.backgroundColor = '';
+        });
+    }
 
-                  displayOptionChain(data.data);
-              } else {
-                  document.getElementById('optionChainData').innerHTML = 
-                      `<div class="error">Error: ${data.message}</div>`;
-              }
-          } catch (error) {
-              document.getElementById('optionChainData').innerHTML = 
-                  `<div class="error">Network error: ${error.message}</div>`;
-          }
-      }
+    // Update the existing filterOptionsByExpiry function to work with strike filter
+    function filterOptionsByExpiry() {
+        filterOptionsByStrike(); // This will handle both filters
+    }
 
-      // Display option chain
-      function displayOptionChain(optionData) {
-          if (optionData.length === 0) {
-              document.getElementById('optionChainData').innerHTML = 
-                  '<div class="loading">No option data available</div>';
-              return;
-          }
+    // Load option chain
+    async function loadOptionChain(symbol) {
+        const optionChainHtml = `
+            <div class="option-chain">
+                <h3>Option Chain for ${symbol}</h3>
+                <div class="expiry-selector">
+                    <label>Select Expiry: </label>
+                    <select id="expirySelect" onchange="loadOptionChainForExpiry('${symbol}', this.value)">
+                        <option value="">All Expiries</option>
+                    </select>
+                </div>
+                <div id="optionChainData" class="loading">Loading option chain...</div>
+            </div>
+        `;
 
-          const tableHtml = `
-              <table class="option-table">
-                  <thead>
-                      <tr>
-                          <th colspan="4" class="call">CALL OPTIONS</th>
-                          <th>STRIKE</th>
-                          <th>EXPIRY</th>
-                          <th colspan="4" class="put">PUT OPTIONS</th>
-                      </tr>
-                      <tr>
-                          <th class="call">LTP</th>
-                          <th class="call">Change</th>
-                          <th class="call">Volume</th>
-                          <th class="call">OI</th>
-                          <th>PRICE</th>
-                          <th>DATE</th>
-                          <th class="put">OI</th>
-                          <th class="put">Volume</th>
-                          <th class="put">Change</th>
-                          <th class="put">LTP</th>
-                      </tr>
-                  </thead>
-                  <tbody>
-                      ${optionData.map(option => `
-                          <tr>
-                              <td class="call">${option.call ? (option.call.livePrice ? `₹${option.call.livePrice.ltp.toFixed(2)}` : '-') : '-'}</td>
-                              <td class="call">${option.call ? (option.call.livePrice ? `${option.call.livePrice.change.toFixed(2)}` : '-') : '-'}</td>
-                              <td class="call">${option.call ? (option.call.livePrice ? option.call.livePrice.volume : '-') : '-'}</td>
-                              <td class="call">${option.call ? (option.call.livePrice ? option.call.livePrice.openInterest : '-') : '-'}</td>
-                              <td><strong>₹${option.strike}</strong></td>
-                              <td>${option.expiry}</td>
-                              <td class="put">${option.put ? (option.put.livePrice ? option.put.livePrice.openInterest : '-') : '-'}</td>
-                              <td class="put">${option.put ? (option.put.livePrice ? option.put.livePrice.volume : '-') : '-'}</td>
-                              <td class="put">${option.put ? (option.put.livePrice ? `${option.put.livePrice.change.toFixed(2)}` : '-') : '-'}</td>
-                              <td class="put">${option.put ? (option.put.livePrice ? `₹${option.put.livePrice.ltp.toFixed(2)}` : '-') : '-'}</td>
-                          </tr>
-                      `).join('')}
-                  </tbody>
-              </table>
-          `;
+        document.getElementById('stockDetails').innerHTML += optionChainHtml;
 
-          document.getElementById('optionChainData').innerHTML = tableHtml;
-      }
+        try {
+            const response = await fetch(`${API_BASE}/market-data/stock/${symbol}/options`);
+            const data = await response.json();
 
-      // Load option chain for specific expiry
-      async function loadOptionChainForExpiry(symbol, expiry) {
-          if (!expiry) {
-              loadOptionChain(symbol);
-              return;
-          }
+            if (data.success) {
+                // Populate expiry dropdown
+                const expirySelect = document.getElementById('expirySelect');
+                data.availableExpiries.forEach(expiry => {
+                    const option = document.createElement('option');
+                    option.value = expiry;
+                    option.textContent = expiry;
+                    expirySelect.appendChild(option);
+                });
 
-          document.getElementById('optionChainData').innerHTML = '<div class="loading">Loading option chain...</div>';
+                displayOptionChain(data.data);
+            } else {
+                document.getElementById('optionChainData').innerHTML = 
+                    `<div class="error">Error: ${data.message}</div>`;
+            }
+        } catch (error) {
+            document.getElementById('optionChainData').innerHTML = 
+                `<div class="error">Network error: ${error.message}</div>`;
+        }
+    }
 
-          try {
-              const response = await fetch(`${API_BASE}/market-data/stock/${symbol}/options?expiry=${expiry}`);
-              const data = await response.json();
+    // Display option chain
+    function displayOptionChain(optionData) {
+        if (optionData.length === 0) {
+            document.getElementById('optionChainData').innerHTML = 
+                '<div class="loading">No option data available</div>';
+            return;
+        }
 
-              if (data.success) {
-                  displayOptionChain(data.data);
-              } else {
-                  document.getElementById('optionChainData').innerHTML = 
-                      `<div class="error">Error: ${data.message}</div>`;
-              }
-          } catch (error) {
-              document.getElementById('optionChainData').innerHTML = 
-                  `<div class="error">Network error: ${error.message}</div>`;
-          }
-      }
+        const tableHtml = `
+            <table class="option-table">
+                <thead>
+                    <tr>
+                        <th colspan="4" class="call">CALL OPTIONS</th>
+                        <th>STRIKE</th>
+                        <th>EXPIRY</th>
+                        <th colspan="4" class="put">PUT OPTIONS</th>
+                    </tr>
+                    <tr>
+                        <th class="call">LTP</th>
+                        <th class="call">Change</th>
+                        <th class="call">Volume</th>
+                        <th class="call">OI</th>
+                        <th>PRICE</th>
+                        <th>DATE</th>
+                        <th class="put">OI</th>
+                        <th class="put">Volume</th>
+                        <th class="put">Change</th>
+                        <th class="put">LTP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${optionData.map(option => `
+                        <tr>
+                            <td class="call">${option.call ? (option.call.livePrice ? `₹${option.call.livePrice.ltp.toFixed(2)}` : '-') : '-'}</td>
+                            <td class="call">${option.call ? (option.call.livePrice ? `${option.call.livePrice.change.toFixed(2)}` : '-') : '-'}</td>
+                            <td class="call">${option.call ? (option.call.livePrice ? option.call.livePrice.volume : '-') : '-'}</td>
+                            <td class="call">${option.call ? (option.call.livePrice ? option.call.livePrice.openInterest : '-') : '-'}</td>
+                            <td><strong>₹${option.strike}</strong></td>
+                            <td>${option.expiry}</td>
+                            <td class="put">${option.put ? (option.put.livePrice ? option.put.livePrice.openInterest : '-') : '-'}</td>
+                            <td class="put">${option.put ? (option.put.livePrice ? option.put.livePrice.volume : '-') : '-'}</td>
+                            <td class="put">${option.put ? (option.put.livePrice ? `${option.put.livePrice.change.toFixed(2)}` : '-') : '-'}</td>
+                            <td class="put">${option.put ? (option.put.livePrice ? `₹${option.put.livePrice.ltp.toFixed(2)}` : '-') : '-'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
 
-      // Enter key search
-      document.getElementById('searchInput').addEventListener('keypress', function(e) {
-          if (e.key === 'Enter') {
-              searchStocks();
-          }
-      });
+        document.getElementById('optionChainData').innerHTML = tableHtml;
+    }
 
-      // Initialize on page load
-      document.addEventListener('DOMContentLoaded', function() {
-          checkApiStatus();
-          // Check status every 30 seconds
-          setInterval(checkApiStatus, 30000);
-      });
-  </script>
+    // Load option chain for specific expiry
+    async function loadOptionChainForExpiry(symbol, expiry) {
+        if (!expiry) {
+            loadOptionChain(symbol);
+            return;
+        }
+
+        document.getElementById('optionChainData').innerHTML = '<div class="loading">Loading option chain...</div>';
+
+        try {
+            const response = await fetch(`${API_BASE}/market-data/stock/${symbol}/options?expiry=${expiry}`);
+            const data = await response.json();
+
+            if (data.success) {
+                displayOptionChain(data.data);
+            } else {
+                document.getElementById('optionChainData').innerHTML = 
+                    `<div class="error">Error: ${data.message}</div>`;
+            }
+        } catch (error) {
+            document.getElementById('optionChainData').innerHTML = 
+                `<div class="error">Network error: ${error.message}</div>`;
+        }
+    }
+
+    // Enter key search
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchStocks();
+        }
+    });
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        checkApiStatus();
+        // Check status every 30 seconds
+        setInterval(checkApiStatus, 30000);
+    });
+</script>
 </body>
 </html>
