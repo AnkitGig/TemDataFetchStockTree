@@ -260,31 +260,55 @@ class LiveOptionChainService {
     let basePrice = 24000 // Default for NIFTY
     let strikeInterval = 50
 
-    switch (underlying.toUpperCase()) {
-      case "NIFTY":
-        basePrice = 24800 // Updated base price for NIFTY
-        strikeInterval = 50
-        break
-      case "BANKNIFTY":
-        basePrice = 56000 // Updated base price for BANKNIFTY
-        strikeInterval = 200
-        break
-      case "FINNIFTY":
-        basePrice = 26667
-        strikeInterval = 50
-        break
-      case "RELIANCE":
-        basePrice = 2800
-        strikeInterval = 50
-        break
-      case "TCS":
-        basePrice = 4000
-        strikeInterval = 50
-        break  
-      default:
-        basePrice = 1000
-        strikeInterval = 50
-    }
+ switch (underlying.toUpperCase()) {
+  case "NIFTY":
+    basePrice = 24800
+    strikeInterval = 50
+    break
+  case "BANKNIFTY":
+    basePrice = 56000
+    strikeInterval = 200
+    break
+  case "FINNIFTY":
+    basePrice = 26667
+    strikeInterval = 50
+    break
+  case "MIDCPNIFTY":
+    basePrice = 13000// Approx level in July 2025
+    strikeInterval = 50
+    break
+  case "RELIANCE":
+    basePrice = 2800
+    strikeInterval = 50
+    break
+  case "TCS":
+    basePrice = 4000
+    strikeInterval = 50
+    break
+  case "ICICIBANK":
+    basePrice = 1250
+    strikeInterval = 20
+    break
+  case "INFY":
+    basePrice = 1600
+    strikeInterval = 20
+    break
+  case "SBIN":
+    basePrice = 800
+    strikeInterval = 10
+    break
+  case "SENSEX":
+    basePrice = 80000
+    strikeInterval = 100
+    break
+  case "BANKEX":
+    basePrice = 60000 // Current range
+    strikeInterval = 100
+    break
+  default:
+    basePrice = 1000
+    strikeInterval = 50
+}
 
     // Generate strikes around base price
     const strikes = []
