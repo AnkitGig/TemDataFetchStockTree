@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Major Indices Live Data</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .controls {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .refresh-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .last-updated {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .market-summary {
+            padding: 20px 30px;
+            background: #e8f4fd;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+        }
+
+        .summary-item {
+            text-align: center;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .summary-label {
+            font-size: 0.8em;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .summary-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .summary-value.positive {
+            color: #27ae60;
+        }
+
+        .summary-value.negative {
+            color: #e74c3c;
+        }
+
+        .indices-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            padding: 30px;
+        }
+
+        .index-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .index-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .index-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .index-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .index-symbol {
+            font-size: 0.9em;
+            color: #6c757d;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .index-price {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .current-price {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #2c3e50;
+            line-height: 1;
+        }
+
+        .price-change {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .price-change.positive {
+            color: #27ae60;
+        }
+
+        .price-change.negative {
+            color: #e74c3c;
+        }
+
+        .price-change.neutral {
+            color: #6c757d;
+        }
+
+        .index-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .detail-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .detail-label {
+            font-size: 0.8em;
+            color: #6c757d;
+            margin-bottom: 4px;
+        }
+
+        .detail-value {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .trend-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .trend-up {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .trend-down {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .trend-neutral {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #6c757d;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px;
+            text-align: center;
+        }
+
+        .status-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+        }
+
+        .status-indicator.online {
+            background: #27ae60;
+        }
+
+        .status-indicator.offline {
+            background: #e74c3c;
+        }
+
+        @media (max-width: 768px) {
+            .indices-grid {
+                grid-template-columns: 1fr;
+                padding: 20px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .summary-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="status-indicator" id="statusIndicator">Checking connection...</div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>📊 Major Indices Live Data</h1>
+            <p>Real-time data for NIFTY, SENSEX, BANKNIFTY, FINNIFTY, MIDCPNIFTY, and BANKEX</p>
+        </div>
+
+        <div class="controls">
+            <button class="refresh-btn" id="refreshBtn" onclick="fetchIndicesData()">
+                🔄 Refresh Data
+            </button>
+            <div class="last-updated" id="lastUpdated">
+                Last updated: Never
+            </div>
+        </div>
+
+        <div class="market-summary" id="marketSummary" style="display: none;">
+            <div class="summary-grid" id="summaryGrid">
+                <!-- Summary items will be populated here -->
+            </div>
+        </div>
+
+        <div id="indicesContainer">
+            <div class="loading">Loading major indices data...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001/api';
+        let autoRefreshInterval = null;
+
+        // Check API connection status
+        async function checkApiStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/status`);
+                const data = await response.json();
+                
+                const indicator = document.getElementById('statusIndicator');
+                if (data.success) {
+                    indicator.textContent = data.status.authenticated ? '🟢 Connected & Authenticated' : '🟡 Connected (Not Authenticated)';
+                    indicator.className = 'status-indicator online';
+                } else {
+                    indicator.textContent = '🔴 API Error';
+                    indicator.className = 'status-indicator offline';
+                }
+            } catch (error) {
+                const indicator = document.getElementById('statusIndicator');
+                indicator.textContent = '🔴 API Offline';
+                indicator.className = 'status-indicator offline';
+            }
+        }
+
+        // Fetch major indices data
+        async function fetchIndicesData() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            const container = document.getElementById('indicesContainer');
+            
+            try {
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = '🔄 Loading...';
+                
+                container.innerHTML = '<div class="loading">Fetching latest indices data...</div>';
+
+                const response = await fetch(`${API_BASE}/market-data/indices/major`);
+                const data = await response.json();
+
+                if (data.success) {
+                    displayIndicesData(data.data, data.summary);
+                    updateLastUpdated(data.timestamp);
+                } else {
+                    container.innerHTML = `<div class="error">Error: ${data.message}</div>`;
+                }
+            } catch (error) {
+                container.innerHTML = `<div class="error">Network error: ${error.message}</div>`;
+            } finally {
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = '🔄 Refresh Data';
+            }
+        }
+
+        // Display indices data
+        function displayIndicesData(indices, summary) {
+            const container = document.getElementById('indicesContainer');
+            
+            // Display market summary
+            displayMarketSummary(summary);
+            
+            // Display indices
+            const html = indices.map(index => {
+                if (index.status === 'ERROR' || index.status === 'NOT_FOUND' || index.status === 'NO_DATA') {
+                    return `
+                        <div class="index-card">
+                            <div class="index-header">
+                                <div class="index-name">${index.name}</div>
+                                <div class="index-symbol">${index.symbol}</div>
+                            </div>
+                            <div class="error" style="margin: 0;">
+                                ${index.message || 'Data not available'}
+                            </div>
+                            ${index.debugInfo ? `
+                                <div style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px; font-size: 0.8em;">
+                                    <strong>Debug Info:</strong><br>
+                                    Token: ${index.debugInfo.tokenUsed || 'N/A'}<br>
+                                    Exchange: ${index.debugInfo.exchangeUsed || 'N/A'}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+
+                const changeClass = index.current.change > 0 ? 'positive' : 
+                                  index.current.change < 0 ? 'negative' : 'neutral';
+                const changeIcon = index.current.change > 0 ? '📈' : 
+                                 index.current.change < 0 ? '📉' : '➡️';
+                
+                const trendClass = index.trend?.direction === 'UP' ? 'trend-up' : 
+                                 index.trend?.direction === 'DOWN' ? 'trend-down' : 'trend-neutral';
+
+                // Helper function to format numbers and handle zeros
+                const formatNumber = (value, decimals = 2) => {
+                    if (!value || value === 0) return 'N/A';
+                    return value.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+                };
+
+                // Helper function to format percentage
+                const formatPercentage = (value, decimals = 2) => {
+                    if (!value || value === 0) return 'N/A';
+                    return `${value >= 0 ? '+' : ''}${value.toFixed(decimals)}%`;
+                };
+
+                return `
+                    <div class="index-card">
+                        <div class="index-header">
+                            <div class="index-name">${index.name}</div>
+                            <div class="index-symbol">${index.symbol} • ${index.exchange}</div>
+                        </div>
+                        
+                        <div class="index-price">
+                            <div class="current-price">${formatNumber(index.current.ltp)}</div>
+                            <div class="price-change ${changeClass}">
+                                ${changeIcon}
+                                ${index.current.change >= 0 ? '+' : ''}${formatNumber(index.current.change)}
+                                (${formatPercentage(index.current.changePercent)})
+                            </div>
+                        </div>
+
+                        <div class="index-details">
+                            <div class="detail-item">
+                                <div class="detail-label">Open</div>
+                                <div class="detail-value">${formatNumber(index.today?.open)}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">High</div>
+                                <div class="detail-value">${formatNumber(index.today?.high)}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Low</div>
+                                <div class="detail-value">${formatNumber(index.today?.low)}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Close</div>
+                                <div class="detail-value">${formatNumber(index.today?.close)}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">52W High</div>
+                                <div class="detail-value">${formatNumber(index.yearlyRange?.high52Week)}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">52W Low</div>
+                                <div class="detail-value">${formatNumber(index.yearlyRange?.low52Week)}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Volume</div>
+                                <div class="detail-value">${formatNumber(index.current?.volume, 0)}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Trend</div>
+                                <div class="detail-value">
+                                    <span class="trend-indicator ${trendClass}">
+                                        ${index.trend?.momentum || 'NEUTRAL'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        ${index.yearlyRange && (index.yearlyRange.high52Week > 0 || index.yearlyRange.low52Week > 0) ? `
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e9ecef;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85em; color: #6c757d;">
+                                    <span>From 52W High: ${formatPercentage(index.yearlyRange.distanceFrom52WeekHigh)}</span>
+                                    <span>From 52W Low: ${formatPercentage(index.yearlyRange.distanceFrom52WeekLow)}</span>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        ${index.debugInfo ? `
+                            <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px; font-size: 0.8em; border-left: 3px solid #17a2b8;">
+                                <strong>🔧 Debug Info:</strong><br>
+                                Token: ${index.token}<br>
+                                Raw Data Keys: ${index.debugInfo.rawDataKeys ? index.debugInfo.rawDataKeys.join(', ') : 'N/A'}<br>
+                                Has OHLC: ${index.debugInfo.hasOHLC ? '✅' : '❌'}<br>
+                                Has 52W Data: ${index.debugInfo.has52WeekData ? '✅' : '❌'}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = `<div class="indices-grid">${html}</div>`;
+        }
+
+        // Display market summary
+        function displayMarketSummary(summary) {
+            const summaryContainer = document.getElementById('marketSummary');
+            const summaryGrid = document.getElementById('summaryGrid');
+            
+            if (!summary) {
+                summaryContainer.style.display = 'none';
+                return;
+            }
+
+            const sentimentClass = summary.marketSentiment === 'BULLISH' ? 'positive' : 
+                                 summary.marketSentiment === 'BEARISH' ? 'negative' : '';
+            const avgChangeClass = summary.averageChange > 0 ? 'positive' : 
+                                 summary.averageChange < 0 ? 'negative' : '';
+
+            summaryGrid.innerHTML = `
+                <div class="summary-item">
+                    <div class="summary-label">Total Indices</div>
+                    <div class="summary-value">${summary.totalIndices}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Data Available</div>
+                    <div class="summary-value">${summary.dataAvailable}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Positive</div>
+                    <div class="summary-value positive">${summary.positive}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Negative</div>
+                    <div class="summary-value negative">${summary.negative}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Average Change</div>
+                    <div class="summary-value ${avgChangeClass}">${summary.averageChange >= 0 ? '+' : ''}${summary.averageChange}%</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Market Sentiment</div>
+                    <div class="summary-value ${sentimentClass}">${summary.marketSentiment}</div>
+                </div>
+            `;
+            
+            summaryContainer.style.display = 'block';
+        }
+
+        // Update last updated time
+        function updateLastUpdated(timestamp) {
+            const lastUpdatedElement = document.getElementById('lastUpdated');
+            const date = new Date(timestamp);
+            lastUpdatedElement.textContent = `Last updated: ${date.toLocaleString('en-IN')}`;
+        }
+
+        // Start auto-refresh
+        function startAutoRefresh() {
+            // Refresh every 30 seconds
+            autoRefreshInterval = setInterval(fetchIndicesData, 30000);
+        }
+
+        // Stop auto-refresh
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkApiStatus();
+            fetchIndicesData();
+            startAutoRefresh();
+            
+            // Check API status every 30 seconds
+            setInterval(checkApiStatus, 30000);
+        });
+
+        // Handle page visibility change to pause/resume auto-refresh
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopAutoRefresh();
+            } else {
+                startAutoRefresh();
+                fetchIndicesData(); // Refresh immediately when page becomes visible
+            }
+        });
+    </script>
+</body>
+</html>

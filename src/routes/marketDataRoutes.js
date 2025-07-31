@@ -49,4 +49,10 @@ router.get("/live/scripts/:instrument", marketDataController.getScriptsByInstrum
 router.get("/live/expiries/:script", marketDataController.getExpiriesByScript)
 router.get("/live/strikes/:script/:expiry", marketDataController.getStrikesByScriptAndExpiry)
 
+// NEW: Major Indices Route
+router.get("/indices/major", marketDataController.getMajorIndices)
+
+// NEW: Debug endpoint
+router.get("/debug", marketDataController.debugMarketData)
+
 module.exports = router

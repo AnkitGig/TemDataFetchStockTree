@@ -68,6 +68,7 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
+            position: relative;
         }
 
         .form-label {
@@ -95,6 +96,83 @@
             background: #f8f9fa;
             color: #6c757d;
             cursor: not-allowed;
+        }
+
+        .form-input.error, .form-select.error {
+            border-color: #e74c3c;
+            box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+        }
+
+        .form-input.success, .form-select.success {
+            border-color: #27ae60;
+            box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.1);
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .suggestions-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e1e8ed;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .suggestion-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f3f4;
+            transition: background-color 0.2s;
+        }
+
+        .suggestion-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-symbol {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .suggestion-name {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 2px;
+        }
+
+        .validation-message {
+            font-size: 0.8rem;
+            margin-top: 4px;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .validation-message.error {
+            color: #e74c3c;
+            background: #fdf2f2;
+        }
+
+        .validation-message.success {
+            color: #27ae60;
+            background: #f0f9f4;
+        }
+
+        .validation-message.info {
+            color: #3498db;
+            background: #f0f8ff;
         }
 
         .submit-btn {
@@ -275,6 +353,44 @@
             border: 1px solid #f5c6cb;
         }
 
+        .alert.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .search-help {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .search-help h4 {
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .search-help ul {
+            margin-left: 20px;
+            color: #6c757d;
+        }
+
+        .search-help li {
+            margin-bottom: 4px;
+        }
+
+        .debug-info {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: #6c757d;
+            border-left: 3px solid #17a2b8;
+        }
+
         @media (max-width: 768px) {
             .form-grid {
                 grid-template-columns: 1fr;
@@ -309,6 +425,16 @@
             </div>
             <div class="card-content">
                 <div id="alertContainer"></div>
+
+                <div class="search-help">
+                    <h4>💡 How to find stocks:</h4>
+                    <ul>
+                        <li><strong>Equity:</strong> RELIANCE, TCS, INFY, SBIN, HDFCBANK, ICICIBANK</li>
+                        <li><strong>Index:</strong> NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY</li>
+                        <li>Type at least 2 characters to search for stocks</li>
+                        <li>System will suggest matching stocks as you type</li>
+                    </ul>
+                </div>
                 
                 <form id="addCallForm">
                     <div class="form-grid">
@@ -319,6 +445,7 @@
                                 <option value="equity">Equity</option>
                                 <option value="index">Index</option>
                             </select>
+                            <div class="debug-info" id="segmentDebug" style="display: none;"></div>
                         </div>
 
                         <div class="form-group">
@@ -326,13 +453,24 @@
                             <select class="form-select" id="instrument" disabled required>
                                 <option value="">Select Instrument</option>
                             </select>
+                            <div class="debug-info" id="instrumentDebug" style="display: none;"></div>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="script">Script</label>
-                            <select class="form-select" id="script" disabled required>
-                                <option value="">Select Script</option>
-                            </select>
+                            <label class="form-label" for="script">Script / Stock Symbol</label>
+                            <div class="input-wrapper">
+                                <input 
+                                    class="form-input" 
+                                    type="text" 
+                                    id="script" 
+                                    placeholder="Type stock symbol (e.g., RELIANCE, TCS)" 
+                                    disabled 
+                                    required
+                                    autocomplete="off"
+                                >
+                                <div class="suggestions-dropdown" id="scriptSuggestions"></div>
+                            </div>
+                            <div class="validation-message" id="scriptValidation"></div>
                         </div>
 
                         <div class="form-group">
@@ -390,11 +528,17 @@
         const form = document.getElementById('addCallForm');
         const segmentSelect = document.getElementById('segment');
         const instrumentSelect = document.getElementById('instrument');
-        const scriptSelect = document.getElementById('script');
+        const scriptInput = document.getElementById('script');
+        const scriptSuggestions = document.getElementById('scriptSuggestions');
+        const scriptValidation = document.getElementById('scriptValidation');
         const expirySelect = document.getElementById('expiry');
         const strikeSelect = document.getElementById('strike');
         const quantityInput = document.getElementById('quantity');
         const submitBtn = document.getElementById('submitBtn');
+        
+        // Debug elements
+        const segmentDebug = document.getElementById('segmentDebug');
+        const instrumentDebug = document.getElementById('instrumentDebug');
         
         // UI elements
         const statusIndicator = document.getElementById('statusIndicator');
@@ -405,6 +549,9 @@
         // State
         let liveData = [];
         let isSubmitting = false;
+        let searchTimeout = null;
+        let selectedScript = null;
+        let debugMode = true; // Enable debug mode
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -416,10 +563,35 @@
         function setupEventListeners() {
             segmentSelect.addEventListener('change', handleSegmentChange);
             instrumentSelect.addEventListener('change', handleInstrumentChange);
-            scriptSelect.addEventListener('change', handleScriptChange);
+            scriptInput.addEventListener('input', handleScriptInput);
+            scriptInput.addEventListener('blur', handleScriptBlur);
+            scriptInput.addEventListener('focus', handleScriptFocus);
             expirySelect.addEventListener('change', handleExpiryChange);
             strikeSelect.addEventListener('change', handleStrikeChange);
             form.addEventListener('submit', handleFormSubmit);
+
+            // Close suggestions when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!scriptInput.contains(e.target) && !scriptSuggestions.contains(e.target)) {
+                    hideSuggestions();
+                }
+            });
+        }
+
+        function debugLog(element, message, data = null) {
+            if (!debugMode) return;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            let debugText = `[${timestamp}] ${message}`;
+            
+            if (data) {
+                debugText += `\nData: ${JSON.stringify(data, null, 2)}`;
+            }
+            
+            element.textContent = debugText;
+            element.style.display = 'block';
+            
+            console.log(`DEBUG: ${message}`, data);
         }
 
         async function checkApiStatus() {
@@ -455,7 +627,9 @@
         function setLoading(element, isLoading) {
             if (isLoading) {
                 element.disabled = true;
-                element.innerHTML = '<option value="">Loading...</option>';
+                if (element.tagName === 'SELECT') {
+                    element.innerHTML = '<option value="">Loading...</option>';
+                }
             } else {
                 element.disabled = false;
             }
@@ -472,29 +646,144 @@
             selectElement.disabled = false;
         }
 
+        function showValidation(message, type = 'error') {
+            scriptValidation.textContent = message;
+            scriptValidation.className = `validation-message ${type}`;
+            scriptValidation.style.display = message ? 'block' : 'none';
+            
+            // Update input styling
+            scriptInput.classList.remove('error', 'success');
+            if (type === 'error') {
+                scriptInput.classList.add('error');
+            } else if (type === 'success') {
+                scriptInput.classList.add('success');
+            }
+        }
+
+        function showSuggestions(suggestions) {
+            if (suggestions.length === 0) {
+                hideSuggestions();
+                return;
+            }
+
+            const html = suggestions.map(suggestion => `
+                <div class="suggestion-item" onclick="selectSuggestion('${suggestion.symbol}', '${suggestion.name}')">
+                    <div class="suggestion-symbol">${suggestion.symbol}</div>
+                    <div class="suggestion-name">${suggestion.name} (${suggestion.exchange})</div>
+                </div>
+            `).join('');
+
+            scriptSuggestions.innerHTML = html;
+            scriptSuggestions.style.display = 'block';
+        }
+
+        function hideSuggestions() {
+            scriptSuggestions.style.display = 'none';
+        }
+
+        function selectSuggestion(symbol, name) {
+            scriptInput.value = symbol;
+            selectedScript = { symbol, name };
+            hideSuggestions();
+            showValidation(`✓ Selected: ${symbol} - ${name}`, 'success');
+            
+            // Trigger expiry loading
+            handleScriptChange();
+        }
+
         async function handleSegmentChange() {
             const segment = segmentSelect.value;
+            
+            debugLog(segmentDebug, `Segment changed to: ${segment}`);
             
             // Reset dependent fields
             instrumentSelect.innerHTML = '<option value="">Select Instrument</option>';
             instrumentSelect.disabled = true;
             resetDependentFields(['script', 'expiry', 'strike']);
             
-            if (!segment) return;
+            if (!segment) {
+                debugLog(segmentDebug, 'No segment selected, clearing instruments');
+                return;
+            }
 
             try {
                 setLoading(instrumentSelect, true);
-                const response = await fetch(`${API_BASE}/market-data/live/instruments/${segment}`);
-                const data = await response.json();
+                debugLog(segmentDebug, `Fetching instruments for segment: ${segment}`);
                 
-                if (data.success) {
+                // Try the API endpoint first
+                let response, data;
+                try {
+                    const url = `${API_BASE}/market-data/live/instruments/${segment}`;
+                    debugLog(segmentDebug, `API URL: ${url}`);
+                    
+                    response = await fetch(url);
+                    data = await response.json();
+                    
+                    debugLog(instrumentDebug, 'API Response received', {
+                        status: response.status,
+                        success: data.success,
+                        dataLength: data.data ? data.data.length : 0,
+                        data: data.data
+                    });
+                } catch (apiError) {
+                    debugLog(instrumentDebug, 'API call failed, using fallback', { error: apiError.message });
+                    
+                    // Fallback to predefined instruments
+                    data = {
+                        success: true,
+                        data: getInstrumentsBySegment(segment)
+                    };
+                }
+                
+                if (data.success && data.data && data.data.length > 0) {
                     populateSelect(instrumentSelect, data.data, 'Select Instrument');
+                    debugLog(instrumentDebug, `Successfully populated ${data.data.length} instruments`);
                 } else {
-                    showAlert(`Error fetching instruments: ${data.message}`);
+                    // Use fallback instruments
+                    const fallbackInstruments = getInstrumentsBySegment(segment);
+                    populateSelect(instrumentSelect, fallbackInstruments, 'Select Instrument');
+                    debugLog(instrumentDebug, `Used fallback instruments: ${fallbackInstruments.length} items`);
                 }
             } catch (error) {
+                debugLog(instrumentDebug, 'Error in handleSegmentChange', { error: error.message });
                 showAlert(`Network error: ${error.message}`);
+                
+                // Use fallback instruments
+                const fallbackInstruments = getInstrumentsBySegment(segment);
+                populateSelect(instrumentSelect, fallbackInstruments, 'Select Instrument');
             }
+        }
+
+        // Fallback function to provide instruments when API fails
+        function getInstrumentsBySegment(segment) {
+            const instruments = {
+                equity: [
+                    { value: 'RELIANCE', label: 'RELIANCE' },
+                    { value: 'TCS', label: 'TCS' },
+                    { value: 'INFY', label: 'INFY' },
+                    { value: 'SBIN', label: 'SBIN' },
+                    { value: 'HDFCBANK', label: 'HDFCBANK' },
+                    { value: 'ICICIBANK', label: 'ICICIBANK' },
+                    { value: 'KOTAKBANK', label: 'KOTAKBANK' },
+                    { value: 'AXISBANK', label: 'AXISBANK' },
+                    { value: 'BHARTIARTL', label: 'BHARTIARTL' },
+                    { value: 'ITC', label: 'ITC' },
+                    { value: 'LT', label: 'LT' },
+                    { value: 'MARUTI', label: 'MARUTI' },
+                    { value: 'ASIANPAINT', label: 'ASIANPAINT' },
+                    { value: 'BAJFINANCE', label: 'BAJFINANCE' }
+                ],
+                index: [
+                    { value: 'NIFTY', label: 'NIFTY' },
+                    { value: 'BANKNIFTY', label: 'BANKNIFTY' },
+                    { value: 'FINNIFTY', label: 'FINNIFTY' },
+                    { value: 'MIDCPNIFTY', label: 'MIDCPNIFTY' },
+                    { value: 'SENSEX', label: 'SENSEX' },
+                    { value: 'BANKEX', label: 'BANKEX' }
+                ]
+            };
+            
+            return instruments[segment] || [];
         }
 
         async function handleInstrumentChange() {
@@ -503,34 +792,101 @@
             // Reset dependent fields
             resetDependentFields(['script', 'expiry', 'strike']);
             
-            if (!instrument) return;
-
-            try {
-                setLoading(scriptSelect, true);
-                const response = await fetch(`${API_BASE}/market-data/live/scripts/${instrument}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    populateSelect(scriptSelect, data.data, 'Select Script');
-                } else {
-                    showAlert(`Error fetching scripts: ${data.message}`);
-                }
-            } catch (error) {
-                showAlert(`Network error: ${error.message}`);
+            if (!instrument) {
+                scriptInput.disabled = true;
+                return;
             }
+
+            // Enable script input and set it to the selected instrument
+            scriptInput.disabled = false;
+            scriptInput.value = instrument;
+            scriptInput.placeholder = `Type ${instrument} or similar stocks...`;
+            
+            // Auto-select the instrument as the script
+            selectedScript = { symbol: instrument, name: instrument };
+            showValidation(`✓ Selected: ${instrument}`, 'success');
+            
+            // Trigger expiry loading
+            handleScriptChange();
 
             // Fetch live data
             fetchLiveData();
         }
 
+        function handleScriptInput() {
+            const query = scriptInput.value.trim();
+            
+            // Clear previous timeout
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+
+            // Reset validation and selection
+            selectedScript = null;
+            resetDependentFields(['expiry', 'strike']);
+
+            if (query.length < 2) {
+                hideSuggestions();
+                showValidation('Type at least 2 characters to search', 'info');
+                return;
+            }
+
+            // Show loading state
+            showValidation('Searching...', 'info');
+
+            // Debounce search
+            searchTimeout = setTimeout(async () => {
+                await searchStocks(query);
+            }, 300);
+        }
+
+        function handleScriptFocus() {
+            const query = scriptInput.value.trim();
+            if (query.length >= 2) {
+                searchStocks(query);
+            }
+        }
+
+        function handleScriptBlur() {
+            // Delay hiding suggestions to allow for clicks
+            setTimeout(() => {
+                if (!scriptSuggestions.matches(':hover')) {
+                    hideSuggestions();
+                }
+            }, 200);
+        }
+
+        async function searchStocks(query) {
+            try {
+                const response = await fetch(`${API_BASE}/market-data/search?q=${encodeURIComponent(query)}&limit=10`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.data.length > 0) {
+                        showSuggestions(data.data);
+                        showValidation(`Found ${data.data.length} matching stocks`, 'info');
+                    } else {
+                        hideSuggestions();
+                        showValidation(`No stocks found matching "${query}". Try: RELIANCE, TCS, INFY, SBIN`, 'error');
+                    }
+                } else {
+                    hideSuggestions();
+                    showValidation(`Search error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                hideSuggestions();
+                showValidation(`Network error: ${error.message}`, 'error');
+            }
+        }
+
         async function handleScriptChange() {
-            const script = scriptSelect.value;
+            if (!selectedScript) return;
+            
+            const script = selectedScript.symbol;
             
             // Reset dependent fields
             resetDependentFields(['expiry', 'strike']);
             
-            if (!script) return;
-
             try {
                 setLoading(expirySelect, true);
                 const response = await fetch(`${API_BASE}/market-data/live/expiries/${script}`);
@@ -550,7 +906,9 @@
         }
 
         async function handleExpiryChange() {
-            const script = scriptSelect.value;
+            if (!selectedScript) return;
+            
+            const script = selectedScript.symbol;
             const expiry = expirySelect.value;
             
             // Reset dependent fields
@@ -582,9 +940,17 @@
 
         function resetDependentFields(fields) {
             fields.forEach(field => {
-                const element = document.getElementById(field);
-                element.innerHTML = `<option value="">Select ${field.charAt(0).toUpperCase() + field.slice(1)}</option>`;
-                element.disabled = true;
+                if (field === 'script') {
+                    scriptInput.value = '';
+                    scriptInput.disabled = true;
+                    selectedScript = null;
+                    showValidation('');
+                    hideSuggestions();
+                } else {
+                    const element = document.getElementById(field);
+                    element.innerHTML = `<option value="">Select ${field.charAt(0).toUpperCase() + field.slice(1)}</option>`;
+                    element.disabled = true;
+                }
             });
         }
 
@@ -607,7 +973,7 @@
                 const params = new URLSearchParams();
                 if (segment) params.append('segment', segment);
                 if (instrument) params.append('instrument', instrument);
-                if (scriptSelect.value) params.append('script', scriptSelect.value);
+                if (selectedScript) params.append('script', selectedScript.symbol);
                 if (expirySelect.value) params.append('expiry', expirySelect.value);
                 if (strikeSelect.value) params.append('strike', strikeSelect.value);
                 params.append('limit', '20');
@@ -678,11 +1044,18 @@
             e.preventDefault();
             
             if (isSubmitting) return;
+
+            // Validate script selection
+            if (!selectedScript) {
+                showAlert('Please select a valid stock from the suggestions');
+                scriptInput.focus();
+                return;
+            }
             
             const formData = {
                 segment: segmentSelect.value,
                 instrument: instrumentSelect.value,
-                script: scriptSelect.value,
+                script: selectedScript.symbol,
                 expiry: expirySelect.value,
                 strike: strikeSelect.value,
                 quantity: quantityInput.value,
@@ -724,7 +1097,9 @@
                     
                     // Reset form
                     form.reset();
+                    selectedScript = null;
                     resetDependentFields(['instrument', 'script', 'expiry', 'strike']);
+                    showValidation('');
                     liveDataContainer.innerHTML = `
                         <div class="empty-state">
                             Select segment and instrument to view live data
