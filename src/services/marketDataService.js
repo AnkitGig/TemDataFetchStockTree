@@ -8,7 +8,7 @@ class MarketDataService {
     this.lastFetchTime = null
     this.fetchCount = 0
     this.dataCache = new Map()
-    this.cacheExpiry = 30 * 1000 // 30 seconds
+    this.cacheExpiry = 2 * 1000 // 2 seconds
   }
 
   async fetchMarketData(authToken, mode = "FULL", specificExchangeTokens = null) {

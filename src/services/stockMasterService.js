@@ -46,7 +46,7 @@ class StockMasterService {
 
   async fetchStockMaster(retryCount = 0) {
     const maxRetries = 3
-    const retryDelay = 5000 // 5 seconds
+    const retryDelay = 2000 // 5 seconds
 
     try {
       // Check if we have cached data that's still valid
@@ -64,7 +64,7 @@ class StockMasterService {
       const response = await axios.get(
         "https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json",
         {
-          timeout: 30000, // 30 second timeout
+          timeout: 3000, // 30 second timeout
           headers: {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
           },

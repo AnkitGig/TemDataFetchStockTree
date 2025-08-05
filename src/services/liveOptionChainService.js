@@ -5,7 +5,7 @@ class LiveOptionChainService {
   constructor() {
     this.baseUrl = "https://apiconnect.angelone.in/rest/secure/angelbroking"
     this.optionChainCache = new Map()
-    this.cacheExpiry = 30 * 1000 // 30 seconds cache
+    this.cacheExpiry = 2 * 1000 // 2 seconds cache
     this.lastFetchTime = null
     this.fetchCount = 0
   }
