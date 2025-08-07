@@ -548,7 +548,7 @@ const getOptionByStrike = async (req, res) => {
         high: putOption.high || 0,
         low: putOption.low || 0,
         open: putOption.open || 0,
-        close: putOption.close || 0,
+        close: callOption.close || 0,
         impliedVolatility: putOption.impliedVolatility || 0,
         delta: callOption.delta || 0,
         gamma: callOption.gamma || 0,
@@ -1920,15 +1920,15 @@ const getMajorIndices = async (req, res) => {
   }
 }
 
-// Debug endpoint to check raw market data
-const debugMarketData = async (req, res) => {
+// NEW: Get all major indices in a single API response
+const getAllMajorIndicesDebug = async (req, res) => {
   try {
-    const { symbol, token } = req.query
+    console.log("📊 Fetching all major indices debug data in single response...")
 
     if (!authService.isAuthenticated()) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required",
+        message: "Authentication required for live indices data",
         loginEndpoint: "/api/auth/login",
       })
     }
@@ -1936,88 +1936,180 @@ const debugMarketData = async (req, res) => {
     const authToken = authService.getAuthToken()
     const stockMasterService = require("../services/stockMasterService")
 
-    let targetToken = token
-    let targetExchange = "NSE"
+    // Define all major indices with their tokens
+    const allIndices = [
+      { symbol: "NIFTY", name: "Nifty 50", exchange: "NSE", fallbackToken: "99926000" },
+      { symbol: "SENSEX", name: "BSE Sensex", exchange: "BSE", fallbackToken: "99919000" },
+      { symbol: "BANKNIFTY", name: "Bank Nifty", exchange: "NSE", fallbackToken: "99926009" },
+      { symbol: "FINNIFTY", name: "Fin Nifty", exchange: "NSE", fallbackToken: "99926037" },
+      { symbol: "MIDCPNIFTY", name: "Nifty Midcap Select", exchange: "NSE", fallbackToken: "99926038" },
+      { symbol: "BANKEX", name: "BSE Bankex", exchange: "BSE", fallbackToken: "99920050" },
+    ]
 
-    if (symbol && !token) {
-      // Try to find the symbol
-      const stockInfo = stockMasterService.getStockBySymbol(symbol.toUpperCase())
-      if (stockInfo) {
-        targetToken = stockInfo.token
-        targetExchange = stockInfo.exch_seg
-      } else {
-        // Use fallback tokens
-        const fallbackTokens = {
-          NIFTY: { token: "99926000", exchange: "NSE" },
-          SENSEX: { token: "99919000", exchange: "BSE" },
-          BANKNIFTY: { token: "99926009", exchange: "NSE" },
-          FINNIFTY: { token: "99926037", exchange: "NSE" },
-          MIDCPNIFTY: { token: "99926038", exchange: "NSE" },
-          BANKEX: { token: "99920050", exchange: "BSE" },
+    const debugResults = {}
+
+    // Process each index
+    for (const index of allIndices) {
+      try {
+        console.log(`🔧 Debug: Processing ${index.symbol}`)
+
+        // Find the index in stock master
+        let indexInfo = stockMasterService.getStockBySymbol(index.symbol)
+
+        // If not found, try to find by partial match
+        if (!indexInfo) {
+          const partialMatches = stockMasterService.stockMaster.filter(
+            (stock) => stock.symbol && stock.symbol.toUpperCase().includes(index.symbol.toUpperCase()),
+          )
+          if (partialMatches.length > 0) {
+            indexInfo = partialMatches[0]
+            console.log(`🔧 Found partial match for ${index.symbol}: ${indexInfo.symbol}`)
+          }
         }
 
-        const fallback = fallbackTokens[symbol.toUpperCase()]
-        if (fallback) {
-          targetToken = fallback.token
-          targetExchange = fallback.exchange
+        // Use fallback token if not found in stock master
+        if (!indexInfo) {
+          indexInfo = {
+            token: index.fallbackToken,
+            symbol: index.symbol,
+            name: index.name,
+            exch_seg: index.exchange,
+          }
+          console.log(`🔧 Using fallback token for ${index.symbol}: ${index.fallbackToken}`)
+        }
+
+        // Fetch live data for this index
+        const exchangeTokens = {
+          [indexInfo.exch_seg]: [indexInfo.token],
+        }
+
+        console.log(`🔧 Fetching market data for ${index.symbol} with token ${indexInfo.token} on ${indexInfo.exch_seg}`)
+
+        const result = await marketDataService.fetchMarketData(authToken, "FULL", exchangeTokens)
+        const rawData = result.data?.[0]
+
+        debugResults[index.symbol] = {
+          requestInfo: {
+            symbol: index.symbol,
+            name: index.name,
+            requestedExchange: index.exchange,
+            fallbackToken: index.fallbackToken,
+          },
+          resolvedInfo: {
+            foundInStockMaster: !!stockMasterService.getStockBySymbol(index.symbol),
+            resolvedToken: indexInfo.token,
+            resolvedExchange: indexInfo.exch_seg,
+            resolvedSymbol: indexInfo.symbol,
+            usedFallback: indexInfo.token === index.fallbackToken,
+          },
+          apiResponse: {
+            success: result.success || false,
+            dataReceived: !!rawData,
+            fetchTime: result.fetchTime,
+            source: result.source,
+          },
+          rawData: rawData || null,
+          dataAnalysis: rawData ? {
+            hasLTP: !!rawData.ltp,
+            ltpValue: rawData.ltp || 0,
+            hasChange: !!(rawData.change || rawData.netChange),
+            changeValue: rawData.change || rawData.netChange || 0,
+            hasOHLC: !!(rawData.open || rawData.high || rawData.low || rawData.close),
+            ohlcValues: {
+              open: rawData.open || 0,
+              high: rawData.high || 0,
+              low: rawData.low || 0,
+              close: rawData.close || 0,
+            },
+            has52WeekData: !!(rawData.weekHigh52 || rawData["52WeekHigh"] || rawData.weekLow52 || rawData["52WeekLow"]),
+            weekData: {
+              high52: rawData.weekHigh52 || rawData["52WeekHigh"] || 0,
+              low52: rawData.weekLow52 || rawData["52WeekLow"] || 0,
+            },
+            hasVolume: !!rawData.volume,
+            volumeValue: rawData.volume || rawData.tradeVolume || 0,
+            hasCircuits: !!(rawData.upperCircuit || rawData.lowerCircuit),
+            circuitValues: {
+              upper: rawData.upperCircuit || 0,
+              lower: rawData.lowerCircuit || 0,
+            },
+            allNumericFields: rawData ? Object.keys(rawData).filter(key => typeof rawData[key] === 'number') : [],
+            allStringFields: rawData ? Object.keys(rawData).filter(key => typeof rawData[key] === 'string') : [],
+            totalFields: rawData ? Object.keys(rawData).length : 0,
+          } : null,
+          processedData: rawData ? {
+            symbol: index.symbol,
+            name: index.name,
+            exchange: indexInfo.exch_seg,
+            token: indexInfo.token,
+            ltp: Number.parseFloat((rawData.ltp || 0).toFixed(2)),
+            change: Number.parseFloat((rawData.change || rawData.netChange || 0).toFixed(2)),
+            changePercent: Number.parseFloat((rawData.percentChange || rawData.changePercent || 0).toFixed(2)),
+            open: Number.parseFloat((rawData.open || 0).toFixed(2)),
+            high: Number.parseFloat((rawData.high || 0).toFixed(2)),
+            low: Number.parseFloat((rawData.low || 0).toFixed(2)),
+            close: Number.parseFloat((rawData.close || 0).toFixed(2)),
+            volume: rawData.volume || rawData.tradeVolume || 0,
+            high52Week: Number.parseFloat((rawData.weekHigh52 || rawData["52WeekHigh"] || 0).toFixed(2)),
+            low52Week: Number.parseFloat((rawData.weekLow52 || rawData["52WeekLow"] || 0).toFixed(2)),
+            upperCircuit: Number.parseFloat((rawData.upperCircuit || 0).toFixed(2)),
+            lowerCircuit: Number.parseFloat((rawData.lowerCircuit || 0).toFixed(2)),
+          } : null,
+          status: rawData ? "SUCCESS" : "NO_DATA",
+          timestamp: new Date().toISOString(),
+        }
+
+        console.log(`✅ Debug data collected for ${index.symbol}`)
+
+      } catch (indexError) {
+        console.error(`❌ Error processing ${index.symbol}:`, indexError.message)
+        
+        debugResults[index.symbol] = {
+          requestInfo: {
+            symbol: index.symbol,
+            name: index.name,
+            requestedExchange: index.exchange,
+            fallbackToken: index.fallbackToken,
+          },
+          error: {
+            message: indexError.message,
+            type: indexError.name,
+            stack: indexError.stack,
+          },
+          status: "ERROR",
+          timestamp: new Date().toISOString(),
         }
       }
     }
 
-    if (!targetToken) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide either 'symbol' or 'token' parameter",
-        examples: {
-          bySymbol: "/api/market-data/debug?symbol=NIFTY",
-          byToken: "/api/market-data/debug?token=99926000",
-        },
-      })
+    // Calculate summary statistics
+    const summary = {
+      totalIndices: allIndices.length,
+      successful: Object.values(debugResults).filter(r => r.status === "SUCCESS").length,
+      failed: Object.values(debugResults).filter(r => r.status === "ERROR").length,
+      noData: Object.values(debugResults).filter(r => r.status === "NO_DATA").length,
+      withLiveData: Object.values(debugResults).filter(r => r.processedData && r.processedData.ltp > 0).length,
+      authTokenUsed: !!authToken,
+      requestTime: new Date().toISOString(),
     }
-
-    console.log(`🔧 Debug: Fetching data for token ${targetToken} on ${targetExchange}`)
-
-    const exchangeTokens = {
-      [targetExchange]: [targetToken],
-    }
-
-    const result = await marketDataService.fetchMarketData(authToken, "FULL", exchangeTokens)
-    const rawData = result.data?.[0]
 
     res.json({
       success: true,
-      debug: {
-        requestedSymbol: symbol,
-        requestedToken: token,
-        resolvedToken: targetToken,
-        resolvedExchange: targetExchange,
-        rawApiResponse: result,
-        rawDataKeys: rawData ? Object.keys(rawData) : [],
-        rawData: rawData,
-        dataAnalysis: rawData
-          ? {
-              hasLTP: !!rawData.ltp,
-              hasOHLC: !!(rawData.open || rawData.high || rawData.low || rawData.close),
-              has52WeekData: !!(
-                rawData.weekHigh52 ||
-                rawData["52WeekHigh"] ||
-                rawData.weekLow52 ||
-                rawData["52WeekLow"]
-              ),
-              hasVolume: !!rawData.volume,
-              hasChange: !!(rawData.change || rawData.netChange),
-              allNumericFields: Object.keys(rawData).filter((key) => typeof rawData[key] === "number"),
-            }
-          : null,
-      },
+      summary: summary,
+      indices: debugResults,
+      debugMode: true,
+      apiEndpoint: "/api/market-data/indices/debug-all",
       timestamp: new Date().toISOString(),
+      message: `Debug data collected for ${allIndices.length} major indices`,
     })
+
   } catch (error) {
-    console.error("❌ Debug endpoint error:", error)
+    console.error("❌ Error in getAllMajorIndicesDebug:", error)
     res.status(500).json({
       success: false,
       message: error.message,
       timestamp: new Date().toISOString(),
+      debugMode: true,
     })
   }
 }
@@ -2045,7 +2137,7 @@ module.exports = {
   getScriptsByInstrument,
   getExpiriesByScript,
   getStrikesByScriptAndExpiry,
-  suggestStockSymbols, // Add this new method
-  getMajorIndices, // Add this new function
-  debugMarketData, // Add the debug endpoint
+  suggestStockSymbols,
+  getMajorIndices,
+  getAllMajorIndicesDebug, 
 }

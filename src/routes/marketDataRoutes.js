@@ -52,7 +52,6 @@ router.get("/live/strikes/:script/:expiry", marketDataController.getStrikesByScr
 // NEW: Major Indices Route
 router.get("/indices/major", marketDataController.getMajorIndices)
 
-// NEW: Debug endpoint
-router.get("/debug", marketDataController.debugMarketData)
+router.get("/indices/debug-all", marketDataController.getAllMajorIndicesDebug)
 
 module.exports = router
