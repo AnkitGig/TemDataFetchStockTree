@@ -27,7 +27,19 @@ class AuthService {
 
   async login() {
     try {
+      // Check if we already have a valid token
+      if (this.authToken && this.isTokenValid()) {
+        console.log("✅ Using existing valid auth token");
+        return {
+          success: true,
+          authToken: this.authToken,
+          feedToken: this.feedToken,
+          loginTime: this.loginTime,
+        };
+      }
+
       const currentTOTP = this.generateTOTP()
+      console.log(`🔐 Generated TOTP: ${currentTOTP}`);
 
       const loginPayload = {
         clientcode: process.env.CLIENT_CODE,
@@ -50,9 +62,12 @@ class AuthService {
           "X-PrivateKey": process.env.SMARTAPI_KEY,
         },
         data: loginPayload,
+        timeout: 10000, // 10 second timeout
       }
 
       console.log("🔐 Attempting login to Angel Broking...")
+      console.log(`🔐 Client Code: ${process.env.CLIENT_CODE}`);
+      console.log(`🔐 API Key: ${process.env.SMARTAPI_KEY?.substring(0, 8)}...`);
 
       const response = await axios(config)
 
@@ -77,8 +92,15 @@ class AuthService {
     } catch (error) {
       console.error("❌ Authentication failed:", error.message)
       if (error.response) {
-        console.error("📋 Error details:", error.response.data)
+        console.error("📋 Error status:", error.response.status)
+        console.error("📋 Error data:", JSON.stringify(error.response.data, null, 2))
       }
+      
+      // Clear invalid tokens
+      this.authToken = null;
+      this.feedToken = null;
+      this.loginTime = null;
+      
       throw error
     }
   }
@@ -104,6 +126,14 @@ class AuthService {
     this.feedToken = null
     this.loginTime = null
     console.log("🔓 Logged out from Angel Broking")
+  }
+
+  isTokenValid() {
+    if (!this.authToken || !this.loginTime) return false;
+    
+    // Check if token is less than 8 hours old
+    const hoursElapsed = (Date.now() - this.loginTime.getTime()) / (1000 * 60 * 60);
+    return hoursElapsed < 8;
   }
 }
 
