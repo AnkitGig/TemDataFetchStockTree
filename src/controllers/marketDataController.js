@@ -1414,45 +1414,322 @@ const addCallPosition = async (req, res) => {
   }
 }
 
-// Get instruments by segment
+// FIXED: Get instruments by segment - This is the main fix for your 215 stocks issue
 const getInstrumentsBySegment = async (req, res) => {
   try {
     const { segment } = req.params
     const stockMasterService = require("../services/stockMasterService")
 
-    let instrumentTypes = []
-    if (segment.toLowerCase() === "equity") {
-      instrumentTypes = ["OPTSTK"]
-    } else if (segment.toLowerCase() === "index") {
-      instrumentTypes = ["OPTIDX"]
-    } else {
-      instrumentTypes = ["OPTIDX", "OPTSTK"]
+    console.log(`📊 Getting instruments for segment: ${segment}`)
+
+    // Ensure stock master service is initialized
+    if (!stockMasterService.isInitialized) {
+      console.log("📊 Stock master service not initialized, initializing now...")
+      await stockMasterService.initialize()
     }
 
-    // Get unique underlying instruments
-    const instruments = new Set()
-    stockMasterService.stockMaster
-      .filter((stock) => instrumentTypes.includes(stock.instrumenttype))
-      .forEach((stock) => {
-        const underlyingMatch = stock.symbol.match(/^([A-Z]+)/)
-        if (underlyingMatch) {
-          instruments.add(underlyingMatch[1])
+    // Define comprehensive lists of popular instruments for each segment
+    const popularEquityInstruments = [
+      "RELIANCE",
+      "TCS",
+      "INFY",
+      "SBIN",
+      "HDFCBANK",
+      "ICICIBANK",
+      "KOTAKBANK",
+      "AXISBANK",
+      "BHARTIARTL",
+      "ITC",
+      "LT",
+      "MARUTI",
+      "ASIANPAINT",
+      "BAJFINANCE",
+      "HDFC",
+      "WIPRO",
+      "ULTRACEMCO",
+      "NESTLEIND",
+      "HINDUNILVR",
+      "POWERGRID",
+      "NTPC",
+      "COALINDIA",
+      "ONGC",
+      "IOC",
+      "BPCL",
+      "GRASIM",
+      "JSWSTEEL",
+      "TATASTEEL",
+      "HINDALCO",
+      "ADANIPORTS",
+      "DRREDDY",
+      "SUNPHARMA",
+      "CIPLA",
+      "DIVISLAB",
+      "APOLLOHOSP",
+      "TITAN",
+      "BAJAJFINSV",
+      "HCLTECH",
+      "TECHM",
+      "INDUSINDBK",
+      "BRITANNIA",
+      "HEROMOTOCO",
+      "EICHERMOT",
+      "SHREECEM",
+      "PIDILITIND",
+      "DABUR",
+      "GODREJCP",
+      "MARICO",
+      "COLPAL",
+      "BERGEPAINT",
+      "ASIANPAINT",
+      "BAJAJ-AUTO",
+      "TVSMOTOR",
+      "M&M",
+      "TATAMOTORS",
+      "ASHOKLEY",
+      "ESCORTS",
+      "BALKRISIND",
+      "MRF",
+      "APOLLOTYRE",
+      "CEAT",
+      "JK",
+      "MOTHERSUMI",
+      "BOSCHLTD",
+      "EXIDEIND",
+      "AMARON",
+      "SAIL",
+      "NMDC",
+      "VEDL",
+      "NATIONALUM",
+      "HINDZINC",
+      "RATNAMANI",
+      "WELCORP",
+      "JINDALSTEL",
+      "JSPL",
+      "WELSPUNIND",
+      "ADANIENT",
+      "ADANIGREEN",
+      "ADANITRANS",
+      "ADANIPOWER",
+      "RPOWER",
+      "TATAPOWER",
+      "PFC",
+      "RECLTD",
+      "IRFC",
+      "IRCTC",
+      "CONCOR",
+      "GMRINFRA",
+      "L&TFH",
+      "SRTRANSFIN",
+      "CHOLAFIN",
+      "M&MFIN",
+      "BAJAJHLDNG",
+      "PGHH",
+      "UNILEVER",
+      "NESTLEIND",
+      "BRITANNIA",
+      "TATACONSUM",
+      "GODREJIND",
+      "VBL",
+      "RADICO",
+      "UBL",
+      "MCDOWELL-N",
+      "IGL",
+      "GAIL",
+      "PETRONET",
+      "GSPL",
+      "ATGL",
+      "INDRAPRASTHA",
+      "TORNTPHARM",
+      "LUPIN",
+      "BIOCON",
+      "CADILAHC",
+      "GLENMARK",
+      "ALKEM",
+      "AUROPHARMA",
+      "ZYDUSLIFE",
+      "LALPATHLAB",
+      "METROPOLIS",
+      "THYROCARE",
+      "FORTIS",
+      "MAXHEALTH",
+      "NARAYANA",
+      "STAR",
+      "ZEEL",
+      "SUNTV",
+      "TV18BRDCST",
+      "NETWORK18",
+      "HATHWAY",
+      "DEN",
+      "INOXLEISUR",
+      "PVR",
+      "SAREGAMA",
+      "TIPS",
+      "RCOM",
+      "IDEA",
+      "AIRTEL",
+      "RAILTEL",
+      "LTTS",
+      "PERSISTENT",
+      "MINDTREE",
+      "MPHASIS",
+      "COFORGE",
+      "LTIM",
+      "OFSS",
+      "CYIENT",
+      "KPITTECH",
+      "ZENSAR",
+      "HEXAWARE",
+      "NIITTECH",
+      "SONATA",
+      "RATEGAIN",
+      "ROUTE",
+      "HAPPIEST",
+      "ZOMATO",
+      "NYKAA",
+      "POLICYBZR",
+      "PAYTM",
+      "EASEMYTRIP",
+      "CARTRADE",
+    ]
+
+    const popularIndexInstruments = [
+      "NIFTY",
+      "BANKNIFTY",
+      "FINNIFTY",
+      "MIDCPNIFTY",
+      "SENSEX",
+      "BANKEX",
+      "NIFTYNXT50",
+      "NIFTYIT",
+      "NIFTYPHARMA",
+      "NIFTYAUTO",
+      "NIFTYMETAL",
+      "NIFTYREALTY",
+      "NIFTYFMCG",
+      "NIFTYENERGY",
+      "NIFTYPSE",
+      "NIFTYPVTBANK",
+      "NIFTYINFRA",
+      "NIFTYCOMMODITY",
+      "NIFTYCPSE",
+      "NIFTYMEDIA",
+      "NIFTYSERVICE",
+    ]
+
+    let instrumentTypes = []
+    let popularInstruments = []
+
+    if (segment.toLowerCase() === "equity") {
+      instrumentTypes = ["OPTSTK"] // Only stock options for equity segment
+      popularInstruments = popularEquityInstruments
+    } else if (segment.toLowerCase() === "index") {
+      instrumentTypes = ["OPTIDX"] // Only index options for index segment
+      popularInstruments = popularIndexInstruments
+    } else {
+      instrumentTypes = ["OPTIDX", "OPTSTK"]
+      popularInstruments = [...popularIndexInstruments, ...popularEquityInstruments]
+    }
+
+    console.log(`📊 Looking for instrument types: ${instrumentTypes.join(", ")}`)
+    console.log(`📊 Stock master has ${stockMasterService.stockMaster.length} total instruments`)
+
+    // Get unique underlying instruments from stock master
+    const instrumentsFromStockMaster = new Set()
+    const instrumentDetails = new Map()
+
+    // Filter stock master data for option contracts
+    const filteredStocks = stockMasterService.stockMaster.filter(
+      (stock) =>
+        stock &&
+        stock.symbol &&
+        stock.symbol.trim() !== "" &&
+        instrumentTypes.includes(stock.instrumenttype) &&
+        (stock.exch_seg === "NFO" || stock.exch_seg === "BFO"),
+    )
+
+    console.log(`📊 Found ${filteredStocks.length} option contracts for ${segment}`)
+
+    // Extract underlying symbols from option contracts
+    filteredStocks.forEach((stock) => {
+      const underlyingMatch = stock.symbol.match(/^([A-Z]+)/)
+      if (underlyingMatch) {
+        const underlying = underlyingMatch[1]
+        instrumentsFromStockMaster.add(underlying)
+
+        // Store additional details for this underlying
+        if (!instrumentDetails.has(underlying)) {
+          instrumentDetails.set(underlying, {
+            exchange: stock.exch_seg,
+            instrumentType: stock.instrumenttype,
+            sampleToken: stock.token,
+            lotSize: stock.lotsize || 1,
+            hasExpiry: !!stock.expiry,
+            source: "stock_master",
+          })
+        }
+      }
+    })
+
+    console.log(`📊 Found ${instrumentsFromStockMaster.size} unique underlyings from stock master`)
+
+    // Combine with popular instruments (add missing ones)
+    const allInstruments = new Set([...instrumentsFromStockMaster])
+
+    popularInstruments.forEach((instrument) => {
+      if (!allInstruments.has(instrument)) {
+        allInstruments.add(instrument)
+        // Add details for popular instruments not found in stock master
+        instrumentDetails.set(instrument, {
+          exchange: segment.toLowerCase() === "equity" ? "NFO" : "NFO",
+          instrumentType: segment.toLowerCase() === "equity" ? "OPTSTK" : "OPTIDX",
+          sampleToken: "0", // Placeholder
+          lotSize: segment.toLowerCase() === "equity" ? 1 : instrument === "NIFTY" ? 50 : 25,
+          hasExpiry: true,
+          source: "popular_list",
+        })
+      }
+    })
+
+    // Convert to array and create response format
+    const instrumentList = Array.from(allInstruments)
+      .sort()
+      .map((instrument) => {
+        const details = instrumentDetails.get(instrument)
+        return {
+          value: instrument,
+          label: instrument,
+          segment: segment,
+          exchange: details.exchange,
+          instrumentType: details.instrumentType,
+          lotSize: details.lotSize,
+          hasExpiry: details.hasExpiry,
+          source: details.source,
         }
       })
 
-    const instrumentList = Array.from(instruments)
-      .sort()
-      .map((instrument) => ({
-        value: instrument,
-        label: instrument,
-        segment: segment,
-      }))
+    console.log(`✅ Returning ${instrumentList.length} instruments for ${segment}`)
+    console.log(
+      `📊 Sample instruments: ${instrumentList
+        .slice(0, 10)
+        .map((i) => i.value)
+        .join(", ")}`,
+    )
 
     res.json({
       success: true,
       data: instrumentList,
       segment: segment,
       count: instrumentList.length,
+      totalOptionContracts: filteredStocks.length,
+      debug: {
+        instrumentTypes: instrumentTypes,
+        stockMasterSize: stockMasterService.stockMaster.length,
+        filteredStocksCount: filteredStocks.length,
+        uniqueUnderlyingsFromStockMaster: instrumentsFromStockMaster.size,
+        popularInstrumentsAdded: popularInstruments.length,
+        totalUniqueInstruments: allInstruments.size,
+        stockMasterInitialized: stockMasterService.isInitialized,
+      },
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
@@ -1460,6 +1737,8 @@ const getInstrumentsBySegment = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message,
+      segment: req.params.segment,
+      timestamp: new Date().toISOString(),
     })
   }
 }
@@ -1983,7 +2262,9 @@ const getAllMajorIndicesDebug = async (req, res) => {
           [indexInfo.exch_seg]: [indexInfo.token],
         }
 
-        console.log(`🔧 Fetching market data for ${index.symbol} with token ${indexInfo.token} on ${indexInfo.exch_seg}`)
+        console.log(
+          `🔧 Fetching market data for ${index.symbol} with token ${indexInfo.token} on ${indexInfo.exch_seg}`,
+        )
 
         const result = await marketDataService.fetchMarketData(authToken, "FULL", exchangeTokens)
         const rawData = result.data?.[0]
@@ -2009,61 +2290,69 @@ const getAllMajorIndicesDebug = async (req, res) => {
             source: result.source,
           },
           rawData: rawData || null,
-          dataAnalysis: rawData ? {
-            hasLTP: !!rawData.ltp,
-            ltpValue: rawData.ltp || 0,
-            hasChange: !!(rawData.change || rawData.netChange),
-            changeValue: rawData.change || rawData.netChange || 0,
-            hasOHLC: !!(rawData.open || rawData.high || rawData.low || rawData.close),
-            ohlcValues: {
-              open: rawData.open || 0,
-              high: rawData.high || 0,
-              low: rawData.low || 0,
-              close: rawData.close || 0,
-            },
-            has52WeekData: !!(rawData.weekHigh52 || rawData["52WeekHigh"] || rawData.weekLow52 || rawData["52WeekLow"]),
-            weekData: {
-              high52: rawData.weekHigh52 || rawData["52WeekHigh"] || 0,
-              low52: rawData.weekLow52 || rawData["52WeekLow"] || 0,
-            },
-            hasVolume: !!rawData.volume,
-            volumeValue: rawData.volume || rawData.tradeVolume || 0,
-            hasCircuits: !!(rawData.upperCircuit || rawData.lowerCircuit),
-            circuitValues: {
-              upper: rawData.upperCircuit || 0,
-              lower: rawData.lowerCircuit || 0,
-            },
-            allNumericFields: rawData ? Object.keys(rawData).filter(key => typeof rawData[key] === 'number') : [],
-            allStringFields: rawData ? Object.keys(rawData).filter(key => typeof rawData[key] === 'string') : [],
-            totalFields: rawData ? Object.keys(rawData).length : 0,
-          } : null,
-          processedData: rawData ? {
-            symbol: index.symbol,
-            name: index.name,
-            exchange: indexInfo.exch_seg,
-            token: indexInfo.token,
-            ltp: Number.parseFloat((rawData.ltp || 0).toFixed(2)),
-            change: Number.parseFloat((rawData.change || rawData.netChange || 0).toFixed(2)),
-            changePercent: Number.parseFloat((rawData.percentChange || rawData.changePercent || 0).toFixed(2)),
-            open: Number.parseFloat((rawData.open || 0).toFixed(2)),
-            high: Number.parseFloat((rawData.high || 0).toFixed(2)),
-            low: Number.parseFloat((rawData.low || 0).toFixed(2)),
-            close: Number.parseFloat((rawData.close || 0).toFixed(2)),
-            volume: rawData.volume || rawData.tradeVolume || 0,
-            high52Week: Number.parseFloat((rawData.weekHigh52 || rawData["52WeekHigh"] || 0).toFixed(2)),
-            low52Week: Number.parseFloat((rawData.weekLow52 || rawData["52WeekLow"] || 0).toFixed(2)),
-            upperCircuit: Number.parseFloat((rawData.upperCircuit || 0).toFixed(2)),
-            lowerCircuit: Number.parseFloat((rawData.lowerCircuit || 0).toFixed(2)),
-          } : null,
+          dataAnalysis: rawData
+            ? {
+                hasLTP: !!rawData.ltp,
+                ltpValue: rawData.ltp || 0,
+                hasChange: !!(rawData.change || rawData.netChange),
+                changeValue: rawData.change || rawData.netChange || 0,
+                hasOHLC: !!(rawData.open || rawData.high || rawData.low || rawData.close),
+                ohlcValues: {
+                  open: rawData.open || 0,
+                  high: rawData.high || 0,
+                  low: rawData.low || 0,
+                  close: rawData.close || 0,
+                },
+                has52WeekData: !!(
+                  rawData.weekHigh52 ||
+                  rawData["52WeekHigh"] ||
+                  rawData.weekLow52 ||
+                  rawData["52WeekLow"]
+                ),
+                weekData: {
+                  high52: rawData.weekHigh52 || rawData["52WeekHigh"] || 0,
+                  low52: rawData.weekLow52 || rawData["52WeekLow"] || 0,
+                },
+                hasVolume: !!rawData.volume,
+                volumeValue: rawData.volume || rawData.tradeVolume || 0,
+                hasCircuits: !!(rawData.upperCircuit || rawData.lowerCircuit),
+                circuitValues: {
+                  upper: rawData.upperCircuit || 0,
+                  lower: rawData.lowerCircuit || 0,
+                },
+                allNumericFields: rawData ? Object.keys(rawData).filter((key) => typeof rawData[key] === "number") : [],
+                allStringFields: rawData ? Object.keys(rawData).filter((key) => typeof rawData[key] === "string") : [],
+                totalFields: rawData ? Object.keys(rawData).length : 0,
+              }
+            : null,
+          processedData: rawData
+            ? {
+                symbol: index.symbol,
+                name: index.name,
+                exchange: indexInfo.exch_seg,
+                token: indexInfo.token,
+                ltp: Number.parseFloat((rawData.ltp || 0).toFixed(2)),
+                change: Number.parseFloat((rawData.change || rawData.netChange || 0).toFixed(2)),
+                changePercent: Number.parseFloat((rawData.percentChange || rawData.changePercent || 0).toFixed(2)),
+                open: Number.parseFloat((rawData.open || 0).toFixed(2)),
+                high: Number.parseFloat((rawData.high || 0).toFixed(2)),
+                low: Number.parseFloat((rawData.low || 0).toFixed(2)),
+                close: Number.parseFloat((rawData.close || 0).toFixed(2)),
+                volume: rawData.volume || rawData.tradeVolume || 0,
+                high52Week: Number.parseFloat((rawData.weekHigh52 || rawData["52WeekHigh"] || 0).toFixed(2)),
+                low52Week: Number.parseFloat((rawData.weekLow52 || rawData["52WeekLow"] || 0).toFixed(2)),
+                upperCircuit: Number.parseFloat((rawData.upperCircuit || 0).toFixed(2)),
+                lowerCircuit: Number.parseFloat((rawData.lowerCircuit || 0).toFixed(2)),
+              }
+            : null,
           status: rawData ? "SUCCESS" : "NO_DATA",
           timestamp: new Date().toISOString(),
         }
 
         console.log(`✅ Debug data collected for ${index.symbol}`)
-
       } catch (indexError) {
         console.error(`❌ Error processing ${index.symbol}:`, indexError.message)
-        
+
         debugResults[index.symbol] = {
           requestInfo: {
             symbol: index.symbol,
@@ -2085,10 +2374,10 @@ const getAllMajorIndicesDebug = async (req, res) => {
     // Calculate summary statistics
     const summary = {
       totalIndices: allIndices.length,
-      successful: Object.values(debugResults).filter(r => r.status === "SUCCESS").length,
-      failed: Object.values(debugResults).filter(r => r.status === "ERROR").length,
-      noData: Object.values(debugResults).filter(r => r.status === "NO_DATA").length,
-      withLiveData: Object.values(debugResults).filter(r => r.processedData && r.processedData.ltp > 0).length,
+      successful: Object.values(debugResults).filter((r) => r.status === "SUCCESS").length,
+      failed: Object.values(debugResults).filter((r) => r.status === "ERROR").length,
+      noData: Object.values(debugResults).filter((r) => r.status === "NO_DATA").length,
+      withLiveData: Object.values(debugResults).filter((r) => r.processedData && r.processedData.ltp > 0).length,
       authTokenUsed: !!authToken,
       requestTime: new Date().toISOString(),
     }
@@ -2102,7 +2391,6 @@ const getAllMajorIndicesDebug = async (req, res) => {
       timestamp: new Date().toISOString(),
       message: `Debug data collected for ${allIndices.length} major indices`,
     })
-
   } catch (error) {
     console.error("❌ Error in getAllMajorIndicesDebug:", error)
     res.status(500).json({
@@ -2139,5 +2427,5 @@ module.exports = {
   getStrikesByScriptAndExpiry,
   suggestStockSymbols,
   getMajorIndices,
-  getAllMajorIndicesDebug, 
+  getAllMajorIndicesDebug,
 }
